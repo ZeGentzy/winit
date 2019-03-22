@@ -6,10 +6,8 @@ use super::{DeviceId, WindowId};
 use super::event_loop::EventsLoopSink;
 use super::window::WindowStore;
 
-use sctk::reexports::client::Proxy;
 use sctk::reexports::client::protocol::wl_touch::{Event as TouchEvent, WlTouch};
 use sctk::reexports::client::protocol::wl_seat;
-use sctk::reexports::client::protocol::wl_seat::RequestsTrait as SeatRequests;
 
 struct TouchPoint {
     wid: WindowId,
@@ -18,13 +16,13 @@ struct TouchPoint {
 }
 
 pub(crate) fn implement_touch(
-    seat: &Proxy<wl_seat::WlSeat>,
+    seat: &wl_seat::WlSeat,
     sink: Arc<Mutex<EventsLoopSink>>,
     store: Arc<Mutex<WindowStore>>,
-) -> Proxy<WlTouch> {
+) -> WlTouch {
     let mut pending_ids = Vec::new();
     seat.get_touch(|touch| {
-        touch.implement(move |evt, _| {
+        touch.implement_closure(move |evt, _| {
             let mut sink = sink.lock().unwrap();
             let store = store.lock().unwrap();
             match evt {
@@ -91,6 +89,7 @@ pub(crate) fn implement_touch(
                         pt.wid,
                     );
                 },
+                _ => unreachable!(),
             }
         }, ())
     }).unwrap()

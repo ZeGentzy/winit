@@ -5,18 +5,16 @@ use sctk::keyboard::{
     self, map_keyboard_auto_with_repeat, Event as KbEvent, KeyRepeatEvent, KeyRepeatKind,
 };
 use sctk::reexports::client::protocol::wl_keyboard;
-use sctk::reexports::client::Proxy;
 use sctk::reexports::client::protocol::wl_seat;
-use sctk::reexports::client::protocol::wl_seat::RequestsTrait as SeatRequests;
 
 use {ElementState, KeyboardInput, ModifiersState, VirtualKeyCode, WindowEvent};
 
 pub fn init_keyboard(
-    seat: &Proxy<wl_seat::WlSeat>,
+    seat: &wl_seat::WlSeat,
     sink: Arc<Mutex<EventsLoopSink>>,
     events_loop_proxy: EventsLoopProxy,
     modifiers_tracker: Arc<Mutex<ModifiersState>>,
-) -> Proxy<wl_keyboard::WlKeyboard> {
+) -> wl_keyboard::WlKeyboard {
     // { variables to be captured by the closures
     let target = Arc::new(Mutex::new(None));
     let my_sink = sink.clone();
@@ -55,6 +53,7 @@ pub fn init_keyboard(
                     let state = match state {
                         wl_keyboard::KeyState::Pressed => ElementState::Pressed,
                         wl_keyboard::KeyState::Released => ElementState::Released,
+                        _ => unreachable!(),
                     };
                     let vkcode = key_to_vkey(rawkey, keysym);
                     let mut guard = my_sink.lock().unwrap();
@@ -128,7 +127,7 @@ pub fn init_keyboard(
             let my_sink = sink;
             // }
             seat.get_keyboard(|keyboard| {
-                keyboard.implement(move |evt, _| match evt {
+                keyboard.implement_closure(move |evt, _| match evt {
                     wl_keyboard::Event::Enter { surface, .. } => {
                         let wid = make_wid(&surface);
                         my_sink
@@ -150,6 +149,7 @@ pub fn init_keyboard(
                             let state = match state {
                                 wl_keyboard::KeyState::Pressed => ElementState::Pressed,
                                 wl_keyboard::KeyState::Released => ElementState::Released,
+                                _ => unreachable!(),
                             };
                             my_sink.lock().unwrap().send_event(
                                 WindowEvent::KeyboardInput {

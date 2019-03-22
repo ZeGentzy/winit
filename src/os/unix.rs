@@ -262,7 +262,7 @@ impl WindowExt for Window {
     #[inline]
     fn get_wayland_surface(&self) -> Option<*mut raw::c_void> {
         match self.window {
-            LinuxWindow::Wayland(ref w) => Some(w.get_surface().c_ptr() as *mut _),
+            LinuxWindow::Wayland(ref w) => Some(w.get_surface().as_ref().c_ptr() as *mut _),
             _ => None
         }
     }
@@ -270,7 +270,7 @@ impl WindowExt for Window {
     #[inline]
     fn get_wayland_display(&self) -> Option<*mut raw::c_void> {
         match self.window {
-            LinuxWindow::Wayland(ref w) => Some(w.get_display().c_ptr() as *mut _),
+            LinuxWindow::Wayland(ref w) => Some(w.get_display().as_ref().c_ptr() as *mut _),
             _ => None
         }
     }

@@ -7,24 +7,22 @@ use super::DeviceId;
 use super::event_loop::EventsLoopSink;
 use super::window::WindowStore;
 
-use sctk::reexports::client::Proxy;
 use sctk::reexports::client::protocol::wl_pointer::{self, Event as PtrEvent, WlPointer};
 use sctk::reexports::client::protocol::wl_seat;
-use sctk::reexports::client::protocol::wl_seat::RequestsTrait as SeatRequests;
 
 pub fn implement_pointer(
-    seat: &Proxy<wl_seat::WlSeat>,
+    seat: &wl_seat::WlSeat,
     sink: Arc<Mutex<EventsLoopSink>>,
     store: Arc<Mutex<WindowStore>>,
     modifiers_tracker: Arc<Mutex<ModifiersState>>,
-) -> Proxy<WlPointer> {
+) -> WlPointer {
     let mut mouse_focus = None;
     let mut axis_buffer = None;
     let mut axis_discrete_buffer = None;
     let mut axis_state = TouchPhase::Ended;
 
     seat.get_pointer(|pointer| {
-        pointer.implement(move |evt, pointer| {
+        pointer.implement_closure(move |evt, pointer| {
             let mut sink = sink.lock().unwrap();
             let store = store.lock().unwrap();
             match evt {
@@ -86,6 +84,7 @@ pub fn implement_pointer(
                         let state = match state {
                             wl_pointer::ButtonState::Pressed => ElementState::Pressed,
                             wl_pointer::ButtonState::Released => ElementState::Released,
+                            _ => unreachable!(),
                         };
                         let button = match button {
                             0x110 => MouseButton::Left,
@@ -107,13 +106,14 @@ pub fn implement_pointer(
                 }
                 PtrEvent::Axis { axis, value, .. } => {
                     if let Some(wid) = mouse_focus {
-                        if pointer.version() < 5 {
+                        if pointer.as_ref().version() < 5 {
                             let (mut x, mut y) = (0.0, 0.0);
                             // old seat compatibility
                             match axis {
                                 // wayland vertical sign convention is the inverse of winit
                                 wl_pointer::Axis::VerticalScroll => y -= value as f32,
                                 wl_pointer::Axis::HorizontalScroll => x += value as f32,
+                                _ => unreachable!(),
                             }
                             sink.send_event(
                                 WindowEvent::MouseWheel {
@@ -130,6 +130,7 @@ pub fn implement_pointer(
                                 // wayland vertical sign convention is the inverse of winit
                                 wl_pointer::Axis::VerticalScroll => y -= value as f32,
                                 wl_pointer::Axis::HorizontalScroll => x += value as f32,
+                                _ => unreachable!(),
                             }
                             axis_buffer = Some((x, y));
                             axis_state = match axis_state {
@@ -176,6 +177,7 @@ pub fn implement_pointer(
                         // wayland vertical sign convention is the inverse of winit
                         wl_pointer::Axis::VerticalScroll => y -= discrete,
                         wl_pointer::Axis::HorizontalScroll => x += discrete,
+                        _ => unreachable!(),
                     }
                     axis_discrete_buffer = Some((x, y));
                     axis_state = match axis_state {
@@ -183,6 +185,7 @@ pub fn implement_pointer(
                         _ => TouchPhase::Started,
                     }
                 }
+                _ => unreachable!(),
             }
         }, ())
     }).unwrap()

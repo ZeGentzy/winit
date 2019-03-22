@@ -8,16 +8,15 @@ use window::MonitorId as RootMonitorId;
 
 use sctk::surface::{get_dpi_factor, get_outputs};
 use sctk::window::{ConceptFrame, Event as WEvent, Window as SWindow, Theme};
-use sctk::reexports::client::{Display, Proxy};
+use sctk::reexports::client::Display;
 use sctk::reexports::client::protocol::{wl_seat, wl_surface};
-use sctk::reexports::client::protocol::wl_surface::RequestsTrait as SurfaceRequests;
 use sctk::output::OutputMgr;
 
 use super::{make_wid, EventsLoop, MonitorId, WindowId};
 use platform::platform::wayland::event_loop::{get_available_monitors, get_primary_monitor};
 
 pub struct Window {
-    surface: Proxy<wl_surface::WlSurface>,
+    surface: wl_surface::WlSurface,
     frame: Arc<Mutex<SWindow<ConceptFrame>>>,
     outputs: OutputMgr, // Access to info for all monitors
     size: Arc<Mutex<(u32, u32)>>,
@@ -48,7 +47,7 @@ impl Window {
                 WEvent::Configure { new_size, .. } => {
                     let mut store = window_store.lock().unwrap();
                     for window in &mut store.windows {
-                        if window.surface.equals(&my_surface) {
+                        if window.surface.as_ref().equals(&my_surface.as_ref()) {
                             window.newsize = new_size;
                             window.need_refresh = true;
                             *(window.need_frame_refresh.lock().unwrap()) = true;
@@ -59,7 +58,7 @@ impl Window {
                 WEvent::Refresh => {
                     let store = window_store.lock().unwrap();
                     for window in &store.windows {
-                        if window.surface.equals(&my_surface) {
+                        if window.surface.as_ref().equals(&my_surface.as_ref()) {
                             *(window.need_frame_refresh.lock().unwrap()) = true;
                             return;
                         }
@@ -68,7 +67,7 @@ impl Window {
                 WEvent::Close => {
                     let mut store = window_store.lock().unwrap();
                     for window in &mut store.windows {
-                        if window.surface.equals(&my_surface) {
+                        if window.surface.as_ref().equals(&my_surface.as_ref()) {
                             window.closed = true;
                             return;
                         }
@@ -126,12 +125,12 @@ impl Window {
 
         Ok(Window {
             display: evlp.display.clone(),
-            surface: surface,
-            frame: frame,
+            surface,
+            frame,
             outputs: evlp.env.outputs.clone(),
-            size: size,
+            size,
             kill_switch: (kill_switch, evlp.cleanup_needed.clone()),
-            need_frame_refresh: need_frame_refresh,
+            need_frame_refresh,
         })
     }
 
@@ -266,7 +265,7 @@ impl Window {
         &*self.display
     }
 
-    pub fn get_surface(&self) -> &Proxy<wl_surface::WlSurface> {
+    pub fn get_surface(&self) -> &wl_surface::WlSurface {
         &self.surface
     }
 
@@ -299,7 +298,7 @@ impl Drop for Window {
  */
 
 struct InternalWindow {
-    surface: Proxy<wl_surface::WlSurface>,
+    surface: wl_surface::WlSurface,
     newsize: Option<(u32, u32)>,
     size: Arc<Mutex<(u32, u32)>>,
     need_refresh: bool,
@@ -322,9 +321,9 @@ impl WindowStore {
         }
     }
 
-    pub fn find_wid(&self, surface: &Proxy<wl_surface::WlSurface>) -> Option<WindowId> {
+    pub fn find_wid(&self, surface: &wl_surface::WlSurface) -> Option<WindowId> {
         for window in &self.windows {
-            if surface.equals(&window.surface) {
+            if surface.as_ref().equals(&window.surface.as_ref()) {
                 return Some(make_wid(surface));
             }
         }
@@ -346,7 +345,7 @@ impl WindowStore {
         pruned
     }
 
-    pub fn new_seat(&self, seat: &Proxy<wl_seat::WlSeat>) {
+    pub fn new_seat(&self, seat: &wl_seat::WlSeat) {
         for window in &self.windows {
             if let Some(w) = window.frame.upgrade() {
                 w.lock().unwrap().new_seat(seat);
@@ -354,9 +353,9 @@ impl WindowStore {
         }
     }
 
-    fn dpi_change(&mut self, surface: &Proxy<wl_surface::WlSurface>, new: i32) {
+    fn dpi_change(&mut self, surface: &wl_surface::WlSurface, new: i32) {
         for window in &mut self.windows {
-            if surface.equals(&window.surface) {
+            if surface.as_ref().equals(&window.surface.as_ref()) {
                 window.new_dpi = Some(new);
             }
         }

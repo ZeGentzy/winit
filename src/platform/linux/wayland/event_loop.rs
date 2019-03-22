@@ -13,11 +13,8 @@ use sctk::output::OutputMgr;
 use sctk::reexports::client::protocol::{
     wl_keyboard, wl_output, wl_pointer, wl_registry, wl_seat, wl_touch,
 };
-use sctk::reexports::client::{ConnectError, Display, EventQueue, GlobalEvent, Proxy};
+use sctk::reexports::client::{ConnectError, Display, EventQueue, GlobalEvent};
 use sctk::Environment;
-
-use sctk::reexports::client::protocol::wl_display::RequestsTrait as DisplayRequests;
-use sctk::reexports::client::protocol::wl_surface::RequestsTrait;
 
 use ModifiersState;
 
@@ -70,7 +67,7 @@ pub struct EventsLoop {
     // The wayland display
     pub display: Arc<Display>,
     // The list of seats
-    pub seats: Arc<Mutex<Vec<(u32, Proxy<wl_seat::WlSeat>)>>>,
+    pub seats: Arc<Mutex<Vec<(u32, wl_seat::WlSeat)>>>,
 }
 
 // A handle that can be sent across threads and used to wake up the `EventsLoop`.
@@ -94,7 +91,7 @@ impl EventsLoopProxy {
                 // Update the `EventsLoop`'s `pending_wakeup` flag.
                 wakeup.store(true, Ordering::Relaxed);
                 // Cause the `EventsLoop` to break from `dispatch` if it is currently blocked.
-                let _ = display.sync(|callback| callback.implement(|_, _| {}, ()));
+                let _ = display.sync(|callback| callback.implement_dummy());
                 display.flush().map_err(|_| EventsLoopClosed)?;
                 Ok(())
             }
@@ -292,13 +289,12 @@ impl EventsLoop {
 struct SeatManager {
     sink: Arc<Mutex<EventsLoopSink>>,
     store: Arc<Mutex<WindowStore>>,
-    seats: Arc<Mutex<Vec<(u32, Proxy<wl_seat::WlSeat>)>>>,
+    seats: Arc<Mutex<Vec<(u32, wl_seat::WlSeat)>>>,
     events_loop_proxy: EventsLoopProxy,
 }
 
 impl SeatManager {
-    fn add_seat(&mut self, id: u32, version: u32, registry: Proxy<wl_registry::WlRegistry>) {
-        use self::wl_registry::RequestsTrait as RegistryRequests;
+    fn add_seat(&mut self, id: u32, version: u32, registry: wl_registry::WlRegistry) {
         use std::cmp::min;
 
         let mut seat_data = SeatData {
@@ -312,7 +308,7 @@ impl SeatManager {
         };
         let seat = registry
             .bind(min(version, 5), id, move |seat| {
-                seat.implement(move |event, seat| {
+                seat.implement_closure(move |event, seat| {
                     seat_data.receive(event, seat)
                 }, ())
             })
@@ -322,11 +318,10 @@ impl SeatManager {
     }
 
     fn remove_seat(&mut self, id: u32) {
-        use self::wl_seat::RequestsTrait as SeatRequests;
         let mut seats = self.seats.lock().unwrap();
         if let Some(idx) = seats.iter().position(|&(i, _)| i == id) {
             let (_, seat) = seats.swap_remove(idx);
-            if seat.version() >= 5 {
+            if seat.as_ref().version() >= 5 {
                 seat.release();
             }
         }
@@ -336,15 +331,15 @@ impl SeatManager {
 struct SeatData {
     sink: Arc<Mutex<EventsLoopSink>>,
     store: Arc<Mutex<WindowStore>>,
-    pointer: Option<Proxy<wl_pointer::WlPointer>>,
-    keyboard: Option<Proxy<wl_keyboard::WlKeyboard>>,
-    touch: Option<Proxy<wl_touch::WlTouch>>,
+    pointer: Option<wl_pointer::WlPointer>,
+    keyboard: Option<wl_keyboard::WlKeyboard>,
+    touch: Option<wl_touch::WlTouch>,
     events_loop_proxy: EventsLoopProxy,
     modifiers_tracker: Arc<Mutex<ModifiersState>>,
 }
 
 impl SeatData {
-    fn receive(&mut self, evt: wl_seat::Event, seat: Proxy<wl_seat::WlSeat>) {
+    fn receive(&mut self, evt: wl_seat::Event, seat: wl_seat::WlSeat) {
         match evt {
             wl_seat::Event::Name { .. } => (),
             wl_seat::Event::Capabilities { capabilities } => {
@@ -360,8 +355,7 @@ impl SeatData {
                 // destroy pointer if applicable
                 if !capabilities.contains(wl_seat::Capability::Pointer) {
                     if let Some(pointer) = self.pointer.take() {
-                        if pointer.version() >= 3 {
-                            use self::wl_pointer::RequestsTrait;
+                        if pointer.as_ref().version() >= 3 {
                             pointer.release();
                         }
                     }
@@ -378,8 +372,7 @@ impl SeatData {
                 // destroy keyboard if applicable
                 if !capabilities.contains(wl_seat::Capability::Keyboard) {
                     if let Some(kbd) = self.keyboard.take() {
-                        if kbd.version() >= 3 {
-                            use self::wl_keyboard::RequestsTrait;
+                        if kbd.as_ref().version() >= 3 {
                             kbd.release();
                         }
                     }
@@ -395,13 +388,13 @@ impl SeatData {
                 // destroy touch if applicable
                 if !capabilities.contains(wl_seat::Capability::Touch) {
                     if let Some(touch) = self.touch.take() {
-                        if touch.version() >= 3 {
-                            use self::wl_touch::RequestsTrait;
+                        if touch.as_ref().version() >= 3 {
                             touch.release();
                         }
                     }
                 }
             }
+            _ => unreachable!(),
         }
     }
 }
@@ -409,20 +402,17 @@ impl SeatData {
 impl Drop for SeatData {
     fn drop(&mut self) {
         if let Some(pointer) = self.pointer.take() {
-            if pointer.version() >= 3 {
-                use self::wl_pointer::RequestsTrait;
+            if pointer.as_ref().version() >= 3 {
                 pointer.release();
             }
         }
         if let Some(kbd) = self.keyboard.take() {
-            if kbd.version() >= 3 {
-                use self::wl_keyboard::RequestsTrait;
+            if kbd.as_ref().version() >= 3 {
                 kbd.release();
             }
         }
         if let Some(touch) = self.touch.take() {
-            if touch.version() >= 3 {
-                use self::wl_touch::RequestsTrait;
+            if touch.as_ref().version() >= 3 {
                 touch.release();
             }
         }
@@ -434,7 +424,7 @@ impl Drop for SeatData {
  */
 
 pub struct MonitorId {
-    pub(crate) proxy: Proxy<wl_output::WlOutput>,
+    pub(crate) proxy: wl_output::WlOutput,
     pub(crate) mgr: OutputMgr,
 }
 
