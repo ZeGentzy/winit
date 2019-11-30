@@ -25,6 +25,7 @@ libc = "0.2.64"
 log = "0.4"
 serde = { version = "1", optional = true, features = ["serde_derive"] }
 raw-window-handle = "0.3"
+winit_types = { version = "0.1.0", path = "../winit_types" }
 
 [dev-dependencies]
 image = "0.21"
@@ -79,7 +80,7 @@ features = [
 wayland-client = { version = "0.23.0", features = [ "dlopen", "egl", "cursor", "eventloop"] }
 calloop = "0.4.2"
 smithay-client-toolkit = "0.6"
-glutin_x11_sym = { version = "0.1.0", path = "../glutin/glutin_x11_sym" }
+glutin_x11_sym = { version = "0.1.0", path = "../glutin_x11_sym" }
 percent-encoding = "2.0"
 
 [target.'cfg(any(target_os = "linux", target_os = "dragonfly", target_os = "freebsd", target_os = "openbsd", target_os = "netbsd", target_os = "windows"))'.dependencies.parking_lot]

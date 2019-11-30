@@ -27,8 +27,7 @@ impl ModifiersState {
 }
 
 // NOTE: Some of these fields are not used, but may be of use in the future.
-pub struct PointerState<'a> {
-    xconn: &'a XConnection,
+pub struct PointerState {
     pub root: ffi::Window,
     pub child: ffi::Window,
     pub root_x: c_double,
@@ -41,13 +40,13 @@ pub struct PointerState<'a> {
     pub relative_to_window: bool,
 }
 
-impl<'a> PointerState<'a> {
+impl PointerState {
     pub fn get_modifier_state(&self) -> ModifiersState {
         ModifiersState::from_x11(&self.modifiers)
     }
 }
 
-impl<'a> Drop for PointerState<'a> {
+impl Drop for PointerState {
     fn drop(&mut self) {
         let xlib = syms!(XLIB);
         if !self.buttons.mask.is_null() {
@@ -98,7 +97,7 @@ impl XConnection {
         &self,
         window: ffi::Window,
         device_id: c_int,
-    ) -> Result<PointerState<'_>, XError> {
+    ) -> Result<PointerState, XError> {
         let xinput2 = syms!(XINPUT2);
         unsafe {
             let mut root = 0;
@@ -129,7 +128,6 @@ impl XConnection {
             self.check_errors()?;
 
             Ok(PointerState {
-                xconn: self,
                 root,
                 child,
                 root_x,

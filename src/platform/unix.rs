@@ -1,6 +1,6 @@
 #![cfg(any(target_os = "linux", target_os = "dragonfly", target_os = "freebsd", target_os = "netbsd", target_os = "openbsd"))]
 
-use std::{os::raw, ptr, sync::Arc};
+use std::{os::raw, ptr};
 
 use smithay_client_toolkit::window::{ButtonState, Theme};
 

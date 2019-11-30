@@ -431,14 +431,13 @@ impl<T: 'static> EventLoopProxy<T> {
     }
 }
 
-struct DeviceInfo<'a> {
-    xconn: &'a XConnection,
+struct DeviceInfo {
     info: *const ffi::XIDeviceInfo,
     count: usize,
 }
 
-impl<'a> DeviceInfo<'a> {
-    fn get(xconn: &'a XConnection, device: c_int) -> Option<Self> {
+impl DeviceInfo {
+    fn get(xconn: &XConnection, device: c_int) -> Option<Self> {
         let xinput2 = syms!(XINPUT2);
         unsafe {
             let mut count = 0;
@@ -449,7 +448,6 @@ impl<'a> DeviceInfo<'a> {
                 None
             } else {
                 Some(DeviceInfo {
-                    xconn,
                     info,
                     count: count as usize,
                 })
@@ -458,7 +456,7 @@ impl<'a> DeviceInfo<'a> {
     }
 }
 
-impl<'a> Drop for DeviceInfo<'a> {
+impl Drop for DeviceInfo {
     fn drop(&mut self) {
         let xinput2 = syms!(XINPUT2);
         assert!(!self.info.is_null());
@@ -466,7 +464,7 @@ impl<'a> Drop for DeviceInfo<'a> {
     }
 }
 
-impl<'a> Deref for DeviceInfo<'a> {
+impl Deref for DeviceInfo {
     type Target = [ffi::XIDeviceInfo];
     fn deref(&self) -> &Self::Target {
         unsafe { slice::from_raw_parts(self.info, self.count) }

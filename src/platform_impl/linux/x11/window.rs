@@ -1033,7 +1033,7 @@ impl UnownedWindow {
 
     fn update_normal_hints<F>(&self, callback: F) -> Result<(), XError>
     where
-        F: FnOnce(&mut util::NormalHints<'_>) -> (),
+        F: FnOnce(&mut util::NormalHints) -> (),
     {
         let mut normal_hints = self.xconn.get_normal_hints(self.xwindow)?;
         callback(&mut normal_hints);
@@ -1150,11 +1150,6 @@ impl UnownedWindow {
     #[inline]
     pub fn xlib_screen_id(&self) -> c_int {
         self.screen_id
-    }
-
-    #[inline]
-    pub fn xlib_xconnection(&self) -> Arc<XConnection> {
-        Arc::clone(&self.xconn)
     }
 
     #[inline]
