@@ -294,7 +294,8 @@ impl XConnection {
         &self,
         window: ffi::Window,
     ) -> Result<XSmartPointer<'_, ffi::XWMHints>, XError> {
-        let wm_hints = unsafe { (self.xlib.XGetWMHints)(self.display, window) };
+        let xlib = syms!(XLIB);
+        let wm_hints = unsafe { (xlib.XGetWMHints)(self.display, window) };
         self.check_errors()?;
         let wm_hints = if wm_hints.is_null() {
             self.alloc_wm_hints()
@@ -309,17 +310,19 @@ impl XConnection {
         window: ffi::Window,
         wm_hints: XSmartPointer<'_, ffi::XWMHints>,
     ) -> Flusher<'_> {
+        let xlib = syms!(XLIB);
         unsafe {
-            (self.xlib.XSetWMHints)(self.display, window, wm_hints.ptr);
+            (xlib.XSetWMHints)(self.display, window, wm_hints.ptr);
         }
         Flusher::new(self)
     }
 
     pub fn get_normal_hints(&self, window: ffi::Window) -> Result<NormalHints<'_>, XError> {
+        let xlib = syms!(XLIB);
         let size_hints = self.alloc_size_hints();
         let mut supplied_by_user = MaybeUninit::uninit();
         unsafe {
-            (self.xlib.XGetWMNormalHints)(
+            (xlib.XGetWMNormalHints)(
                 self.display,
                 window,
                 size_hints.ptr,
@@ -334,8 +337,9 @@ impl XConnection {
         window: ffi::Window,
         normal_hints: NormalHints<'_>,
     ) -> Flusher<'_> {
+        let xlib = syms!(XLIB);
         unsafe {
-            (self.xlib.XSetWMNormalHints)(self.display, window, normal_hints.size_hints.ptr);
+            (xlib.XSetWMNormalHints)(self.display, window, normal_hints.size_hints.ptr);
         }
         Flusher::new(self)
     }

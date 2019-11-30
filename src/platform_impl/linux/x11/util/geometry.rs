@@ -183,10 +183,11 @@ impl XConnection {
         window: ffi::Window,
         root: ffi::Window,
     ) -> Result<TranslatedCoords, XError> {
+        let xlib = syms!(XLIB);
         let mut coords = TranslatedCoords::default();
 
         unsafe {
-            (self.xlib.XTranslateCoordinates)(
+            (xlib.XTranslateCoordinates)(
                 self.display,
                 window,
                 root,
@@ -204,10 +205,11 @@ impl XConnection {
 
     // This is adequate for inner_size
     pub fn get_geometry(&self, window: ffi::Window) -> Result<Geometry, XError> {
+        let xlib = syms!(XLIB);
         let mut geometry = Geometry::default();
 
         let _status = unsafe {
-            (self.xlib.XGetGeometry)(
+            (xlib.XGetGeometry)(
                 self.display,
                 window,
                 &mut geometry.root,
@@ -267,6 +269,7 @@ impl XConnection {
     }
 
     fn get_parent_window(&self, window: ffi::Window) -> Result<ffi::Window, XError> {
+        let xlib = syms!(XLIB);
         let parent = unsafe {
             let mut root = 0;
             let mut parent = 0;
@@ -274,7 +277,7 @@ impl XConnection {
             let mut nchildren = 0;
 
             // What's filled into `parent` if `window` is the root window?
-            let _status = (self.xlib.XQueryTree)(
+            let _status = (xlib.XQueryTree)(
                 self.display,
                 window,
                 &mut root,
@@ -285,7 +288,7 @@ impl XConnection {
 
             // The list of children isn't used
             if children != ptr::null_mut() {
-                (self.xlib.XFree)(children as *mut _);
+                (xlib.XFree)(children as *mut _);
             }
 
             parent

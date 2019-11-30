@@ -16,9 +16,10 @@ unsafe fn create_pre_edit_attr<'a>(
     xconn: &'a Arc<XConnection>,
     ic_spot: &'a ffi::XPoint,
 ) -> util::XSmartPointer<'a, c_void> {
+    let xlib = syms!(XLIB);
     util::XSmartPointer::new(
         xconn,
-        (xconn.xlib.XVaCreateNestedList)(
+        (xlib.XVaCreateNestedList)(
             0,
             ffi::XNSpotLocation_0.as_ptr() as *const _,
             ic_spot,
@@ -67,7 +68,8 @@ impl ImeContext {
         im: ffi::XIM,
         window: ffi::Window,
     ) -> Option<ffi::XIC> {
-        let ic = (xconn.xlib.XCreateIC)(
+        let xlib = syms!(XLIB);
+        let ic = (xlib.XCreateIC)(
             im,
             ffi::XNInputStyle_0.as_ptr() as *const _,
             ffi::XIMPreeditNothing | ffi::XIMStatusNothing,
@@ -88,8 +90,9 @@ impl ImeContext {
         window: ffi::Window,
         ic_spot: ffi::XPoint,
     ) -> Option<ffi::XIC> {
+        let xlib = syms!(XLIB);
         let pre_edit_attr = create_pre_edit_attr(xconn, &ic_spot);
-        let ic = (xconn.xlib.XCreateIC)(
+        let ic = (xlib.XCreateIC)(
             im,
             ffi::XNInputStyle_0.as_ptr() as *const _,
             ffi::XIMPreeditNothing | ffi::XIMStatusNothing,
@@ -107,20 +110,23 @@ impl ImeContext {
     }
 
     pub fn focus(&self, xconn: &Arc<XConnection>) -> Result<(), XError> {
+        let xlib = syms!(XLIB);
         unsafe {
-            (xconn.xlib.XSetICFocus)(self.ic);
+            (xlib.XSetICFocus)(self.ic);
         }
         xconn.check_errors()
     }
 
     pub fn unfocus(&self, xconn: &Arc<XConnection>) -> Result<(), XError> {
+        let xlib = syms!(XLIB);
         unsafe {
-            (xconn.xlib.XUnsetICFocus)(self.ic);
+            (xlib.XUnsetICFocus)(self.ic);
         }
         xconn.check_errors()
     }
 
     pub fn set_spot(&mut self, xconn: &Arc<XConnection>, x: c_short, y: c_short) {
+        let xlib = syms!(XLIB);
         if self.ic_spot.x == x && self.ic_spot.y == y {
             return;
         }
@@ -128,7 +134,7 @@ impl ImeContext {
 
         unsafe {
             let pre_edit_attr = create_pre_edit_attr(xconn, &self.ic_spot);
-            (xconn.xlib.XSetICValues)(
+            (xlib.XSetICValues)(
                 self.ic,
                 ffi::XNPreeditAttributes_0.as_ptr() as *const _,
                 pre_edit_attr.ptr,

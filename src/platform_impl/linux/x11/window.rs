@@ -110,6 +110,7 @@ impl UnownedWindow {
         pl_attribs: PlatformSpecificWindowBuilderAttributes,
     ) -> Result<UnownedWindow, RootOsError> {
         let xconn = &event_loop.xconn;
+        let xlib = syms!(XLIB);
         let root = event_loop.root;
 
         let mut monitors = xconn.available_monitors();
@@ -169,7 +170,7 @@ impl UnownedWindow {
 
         let screen_id = match pl_attribs.screen_id {
             Some(id) => id,
-            None => unsafe { (xconn.xlib.XDefaultScreen)(xconn.display) },
+            None => unsafe { (xlib.XDefaultScreen)(xconn.display) },
         };
 
         // creating
@@ -178,7 +179,7 @@ impl UnownedWindow {
             swa.colormap = if let Some(vi) = pl_attribs.visual_infos {
                 unsafe {
                     let visual = vi.visual;
-                    (xconn.xlib.XCreateColormap)(xconn.display, root, visual, ffi::AllocNone)
+                    (xlib.XCreateColormap)(xconn.display, root, visual, ffi::AllocNone)
                 }
             } else {
                 0
@@ -205,7 +206,7 @@ impl UnownedWindow {
 
         // finally creating the window
         let xwindow = unsafe {
-            (xconn.xlib.XCreateWindow)(
+            (xlib.XCreateWindow)(
                 xconn.display,
                 root,
                 0,
@@ -304,7 +305,7 @@ impl UnownedWindow {
                 (*class_hint).res_class = instance.as_ptr() as *mut c_char;
 
                 unsafe {
-                    (xconn.xlib.XSetClassHint)(xconn.display, window.xwindow, class_hint.ptr);
+                    (xlib.XSetClassHint)(xconn.display, window.xwindow, class_hint.ptr);
                 } //.queue();
             }
 
@@ -353,7 +354,7 @@ impl UnownedWindow {
 
             // Opt into handling window close
             unsafe {
-                (xconn.xlib.XSetWMProtocols)(
+                (xlib.XSetWMProtocols)(
                     xconn.display,
                     window.xwindow,
                     &[event_loop.wm_delete_window, event_loop.net_wm_ping] as *const ffi::Atom
@@ -365,14 +366,14 @@ impl UnownedWindow {
             // Set visibility (map window)
             if window_attrs.visible {
                 unsafe {
-                    (xconn.xlib.XMapRaised)(xconn.display, window.xwindow);
+                    (xlib.XMapRaised)(xconn.display, window.xwindow);
                 } //.queue();
             }
 
             // Attempt to make keyboard input repeat detectable
             unsafe {
                 let mut supported_ptr = ffi::False;
-                (xconn.xlib.XkbSetDetectableAutoRepeat)(
+                (xlib.XkbSetDetectableAutoRepeat)(
                     xconn.display,
                     ffi::True,
                     &mut supported_ptr,
@@ -558,6 +559,7 @@ impl UnownedWindow {
     }
 
     fn set_fullscreen_hint(&self, fullscreen: bool) -> util::Flusher<'_> {
+        let xlib = syms!(XLIB);
         let fullscreen_atom =
             unsafe { self.xconn.get_atom_unchecked(b"_NET_WM_STATE_FULLSCREEN\0") };
         let flusher = self.set_netwm(fullscreen.into(), (fullscreen_atom as c_long, 0, 0, 0));
@@ -566,7 +568,7 @@ impl UnownedWindow {
             // Ensure that the fullscreen window receives input focus to prevent
             // locking up the user's display.
             unsafe {
-                (self.xconn.xlib.XSetInputFocus)(
+                (xlib.XSetInputFocus)(
                     self.xconn.display,
                     self.xwindow,
                     ffi::RevertToParent,
@@ -718,11 +720,12 @@ impl UnownedWindow {
 
     // Called by EventProcessor when a VisibilityNotify event is received
     pub(crate) fn visibility_notify(&self) {
+        let xlib = syms!(XLIB);
         let mut shared_state = self.shared_state.lock();
 
         match shared_state.visibility {
             Visibility::No => unsafe {
-                (self.xconn.xlib.XUnmapWindow)(self.xconn.display, self.xwindow);
+                (xlib.XUnmapWindow)(self.xconn.display, self.xwindow);
             },
             Visibility::Yes => (),
             Visibility::YesWait => {
@@ -773,11 +776,12 @@ impl UnownedWindow {
     }
 
     fn set_title_inner(&self, title: &str) -> util::Flusher<'_> {
+        let xlib = syms!(XLIB);
         let wm_name_atom = unsafe { self.xconn.get_atom_unchecked(b"_NET_WM_NAME\0") };
         let utf8_atom = unsafe { self.xconn.get_atom_unchecked(b"UTF8_STRING\0") };
         let title = CString::new(title).expect("Window title contained null byte");
         unsafe {
-            (self.xconn.xlib.XStoreName)(
+            (xlib.XStoreName)(
                 self.xconn.display,
                 self.xwindow,
                 title.as_ptr() as *const c_char,
@@ -871,6 +875,7 @@ impl UnownedWindow {
 
     #[inline]
     pub fn set_visible(&self, visible: bool) {
+        let xlib = syms!(XLIB);
         let mut shared_state = self.shared_state.lock();
 
         match (visible, shared_state.visibility) {
@@ -882,7 +887,7 @@ impl UnownedWindow {
 
         if visible {
             unsafe {
-                (self.xconn.xlib.XMapRaised)(self.xconn.display, self.xwindow);
+                (xlib.XMapRaised)(self.xconn.display, self.xwindow);
             }
             self.xconn
                 .flush_requests()
@@ -890,7 +895,7 @@ impl UnownedWindow {
             shared_state.visibility = Visibility::YesWait;
         } else {
             unsafe {
-                (self.xconn.xlib.XUnmapWindow)(self.xconn.display, self.xwindow);
+                (xlib.XUnmapWindow)(self.xconn.display, self.xwindow);
             }
             self.xconn
                 .flush_requests()
@@ -948,6 +953,7 @@ impl UnownedWindow {
     }
 
     pub(crate) fn set_position_inner(&self, mut x: i32, mut y: i32) -> util::Flusher<'_> {
+        let xlib = syms!(XLIB);
         // There are a few WMs that set client area position rather than window position, so
         // we'll translate for consistency.
         if util::wm_name_is_one_of(&["Enlightenment", "FVWM"]) {
@@ -961,7 +967,7 @@ impl UnownedWindow {
             }
         }
         unsafe {
-            (self.xconn.xlib.XMoveWindow)(self.xconn.display, self.xwindow, x as c_int, y as c_int);
+            (xlib.XMoveWindow)(self.xconn.display, self.xwindow, x as c_int, y as c_int);
         }
         util::Flusher::new(&self.xconn)
     }
@@ -1005,8 +1011,9 @@ impl UnownedWindow {
     }
 
     pub(crate) fn set_inner_size_physical(&self, width: u32, height: u32) {
+        let xlib = syms!(XLIB);
         unsafe {
-            (self.xconn.xlib.XResizeWindow)(
+            (xlib.XResizeWindow)(
                 self.xconn.display,
                 self.xwindow,
                 width as c_uint,
@@ -1068,6 +1075,7 @@ impl UnownedWindow {
         width: f64,
         height: f64,
     ) -> (f64, f64, util::Flusher<'_>) {
+        let xlib = syms!(XLIB);
         let scale_factor = new_dpi_factor / old_dpi_factor;
         let new_width = width * scale_factor;
         let new_height = height * scale_factor;
@@ -1088,7 +1096,7 @@ impl UnownedWindow {
         })
         .expect("Failed to update normal hints");
         unsafe {
-            (self.xconn.xlib.XResizeWindow)(
+            (xlib.XResizeWindow)(
                 self.xconn.display,
                 self.xwindow,
                 new_width.round() as c_uint,
@@ -1156,7 +1164,8 @@ impl UnownedWindow {
 
     #[inline]
     pub fn xcb_connection(&self) -> *mut c_void {
-        unsafe { (self.xconn.xlib_xcb.XGetXCBConnection)(self.xconn.display) as *mut _ }
+        let xlib_xcb = syms!(XLIB_XCB);
+        unsafe { (xlib_xcb.XGetXCBConnection)(self.xconn.display) as *mut _ }
     }
 
     #[inline]
@@ -1169,6 +1178,7 @@ impl UnownedWindow {
 
     #[inline]
     pub fn set_cursor_grab(&self, grab: bool) -> Result<(), ExternalError> {
+        let xlib = syms!(XLIB);
         let mut grabbed_lock = self.cursor_grabbed.lock();
         if grab == *grabbed_lock {
             return Ok(());
@@ -1176,11 +1186,11 @@ impl UnownedWindow {
         unsafe {
             // We ungrab before grabbing to prevent passive grabs from causing `AlreadyGrabbed`.
             // Therefore, this is common to both codepaths.
-            (self.xconn.xlib.XUngrabPointer)(self.xconn.display, ffi::CurrentTime);
+            (xlib.XUngrabPointer)(self.xconn.display, ffi::CurrentTime);
         }
         let result = if grab {
             let result = unsafe {
-                (self.xconn.xlib.XGrabPointer)(
+                (xlib.XGrabPointer)(
                     self.xconn.display,
                     self.xwindow,
                     ffi::True,
@@ -1251,8 +1261,9 @@ impl UnownedWindow {
     }
 
     pub fn set_cursor_position_physical(&self, x: i32, y: i32) -> Result<(), ExternalError> {
+        let xlib = syms!(XLIB);
         unsafe {
-            (self.xconn.xlib.XWarpPointer)(self.xconn.display, 0, self.xwindow, 0, 0, 0, 0, x, y);
+            (xlib.XWarpPointer)(self.xconn.display, 0, self.xwindow, 0, 0, 0, 0, x, y);
             self.xconn
                 .flush_requests()
                 .map_err(|e| ExternalError::Os(os_error!(OsError::XError(e))))

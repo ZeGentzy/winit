@@ -5,12 +5,14 @@ use super::{ffi, XConnection, XError};
 use super::{context::ImeContext, input_method::PotentialInputMethods};
 
 pub unsafe fn close_im(xconn: &Arc<XConnection>, im: ffi::XIM) -> Result<(), XError> {
-    (xconn.xlib.XCloseIM)(im);
+    let xlib = syms!(XLIB);
+    (xlib.XCloseIM)(im);
     xconn.check_errors()
 }
 
 pub unsafe fn destroy_ic(xconn: &Arc<XConnection>, ic: ffi::XIC) -> Result<(), XError> {
-    (xconn.xlib.XDestroyIC)(ic);
+    let xlib = syms!(XLIB);
+    (xlib.XDestroyIC)(ic);
     xconn.check_errors()
 }
 

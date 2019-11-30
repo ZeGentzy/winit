@@ -14,9 +14,10 @@ pub unsafe fn xim_set_callback(
     field: *const c_char,
     callback: *mut ffi::XIMCallback,
 ) -> Result<(), XError> {
+    let xlib = syms!(XLIB);
     // It's advisable to wrap variadic FFI functions in our own functions, as we want to minimize
     // access that isn't type-checked.
-    (xconn.xlib.XSetIMValues)(xim, field, callback, ptr::null_mut::<()>());
+    (xlib.XSetIMValues)(xim, field, callback, ptr::null_mut::<()>());
     xconn.check_errors()
 }
 
@@ -30,7 +31,8 @@ pub unsafe fn set_instantiate_callback(
     xconn: &Arc<XConnection>,
     client_data: ffi::XPointer,
 ) -> Result<(), XError> {
-    (xconn.xlib.XRegisterIMInstantiateCallback)(
+    let xlib = syms!(XLIB);
+    (xlib.XRegisterIMInstantiateCallback)(
         xconn.display,
         ptr::null_mut(),
         ptr::null_mut(),
@@ -45,7 +47,8 @@ pub unsafe fn unset_instantiate_callback(
     xconn: &Arc<XConnection>,
     client_data: ffi::XPointer,
 ) -> Result<(), XError> {
-    (xconn.xlib.XUnregisterIMInstantiateCallback)(
+    let xlib = syms!(XLIB);
+    (xlib.XUnregisterIMInstantiateCallback)(
         xconn.display,
         ptr::null_mut(),
         ptr::null_mut(),

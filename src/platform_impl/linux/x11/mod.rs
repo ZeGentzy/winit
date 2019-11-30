@@ -82,7 +82,8 @@ impl<T: 'static> Clone for EventLoopProxy<T> {
 
 impl<T: 'static> EventLoop<T> {
     pub fn new(xconn: Arc<XConnection>) -> EventLoop<T> {
-        let root = unsafe { (xconn.xlib.XDefaultRootWindow)(xconn.display) };
+        let (xlib, xinput2) = syms!(XLIB, XINPUT2);
+        let root = unsafe { (xlib.XDefaultRootWindow)(xconn.display) };
 
         let wm_delete_window = unsafe { xconn.get_atom_unchecked(b"WM_DELETE_WINDOW\0") };
 
@@ -112,7 +113,7 @@ impl<T: 'static> EventLoop<T> {
         let xi2ext = unsafe {
             let mut ext = XExtension::default();
 
-            let res = (xconn.xlib.XQueryExtension)(
+            let res = (xlib.XQueryExtension)(
                 xconn.display,
                 b"XInputExtension\0".as_ptr() as *const c_char,
                 &mut ext.opcode,
@@ -130,7 +131,7 @@ impl<T: 'static> EventLoop<T> {
         unsafe {
             let mut xinput_major_ver = ffi::XI_2_Major;
             let mut xinput_minor_ver = ffi::XI_2_Minor;
-            if (xconn.xinput2.XIQueryVersion)(
+            if (xinput2.XIQueryVersion)(
                 xconn.display,
                 &mut xinput_major_ver,
                 &mut xinput_minor_ver,
@@ -438,9 +439,10 @@ struct DeviceInfo<'a> {
 
 impl<'a> DeviceInfo<'a> {
     fn get(xconn: &'a XConnection, device: c_int) -> Option<Self> {
+        let xinput2 = syms!(XINPUT2);
         unsafe {
             let mut count = 0;
-            let info = (xconn.xinput2.XIQueryDevice)(xconn.display, device, &mut count);
+            let info = (xinput2.XIQueryDevice)(xconn.display, device, &mut count);
             xconn.check_errors().ok()?;
 
             if info.is_null() || count == 0 {
@@ -458,8 +460,9 @@ impl<'a> DeviceInfo<'a> {
 
 impl<'a> Drop for DeviceInfo<'a> {
     fn drop(&mut self) {
+        let xinput2 = syms!(XINPUT2);
         assert!(!self.info.is_null());
-        unsafe { (self.xconn.xinput2.XIFreeDeviceInfo)(self.info as *mut _) };
+        unsafe { (xinput2.XIFreeDeviceInfo)(self.info as *mut _) };
     }
 }
 
@@ -517,8 +520,9 @@ impl Drop for Window {
     fn drop(&mut self) {
         let window = self.deref();
         let xconn = &window.xconn;
+        let xlib = syms!(XLIB);
         unsafe {
-            (xconn.xlib.XDestroyWindow)(xconn.display, window.id().0);
+            (xlib.XDestroyWindow)(xconn.display, window.id().0);
             // If the window was somehow already destroyed, we'll get a `BadWindow` error, which we don't care about.
             let _ = xconn.check_errors();
         }
@@ -537,9 +541,10 @@ impl<'a> GenericEventCookie<'a> {
         xconn: &'b XConnection,
         event: ffi::XEvent,
     ) -> Option<GenericEventCookie<'b>> {
+        let xlib = syms!(XLIB);
         unsafe {
             let mut cookie: ffi::XGenericEventCookie = From::from(event);
-            if (xconn.xlib.XGetEventData)(xconn.display, &mut cookie) == ffi::True {
+            if (xlib.XGetEventData)(xconn.display, &mut cookie) == ffi::True {
                 Some(GenericEventCookie { xconn, cookie })
             } else {
                 None
@@ -550,8 +555,9 @@ impl<'a> GenericEventCookie<'a> {
 
 impl<'a> Drop for GenericEventCookie<'a> {
     fn drop(&mut self) {
+        let xlib = syms!(XLIB);
         unsafe {
-            (self.xconn.xlib.XFreeEventData)(self.xconn.display, &mut self.cookie);
+            (xlib.XFreeEventData)(self.xconn.display, &mut self.cookie);
         }
     }
 }

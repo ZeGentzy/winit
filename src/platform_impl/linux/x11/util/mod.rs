@@ -86,7 +86,8 @@ impl XConnection {
     //    When in doubt, check the X11 source; if a function calls `_XReply`, it flushes and waits.
     // All util functions that abstract an async function will return a `Flusher`.
     pub fn flush_requests(&self) -> Result<(), XError> {
-        unsafe { (self.xlib.XFlush)(self.display) };
+        let xlib = syms!(XLIB);
+        unsafe { (xlib.XFlush)(self.display) };
         //println!("XFlush");
         // This isn't necessarily a useful time to check for errors (since our request hasn't
         // necessarily been processed yet)
@@ -94,7 +95,8 @@ impl XConnection {
     }
 
     pub fn sync_with_server(&self) -> Result<(), XError> {
-        unsafe { (self.xlib.XSync)(self.display, ffi::False) };
+        let xlib = syms!(XLIB);
+        unsafe { (xlib.XSync)(self.display, ffi::False) };
         //println!("XSync");
         self.check_errors()
     }

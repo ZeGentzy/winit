@@ -207,18 +207,19 @@ impl XConnection {
     }
 
     fn query_monitor_list(&self) -> Vec<MonitorHandle> {
+        let (xlib, xrandr) = syms!(XLIB, XRANDR_2_2_0);
         unsafe {
             let mut major = 0;
             let mut minor = 0;
-            (self.xrandr.XRRQueryVersion)(self.display, &mut major, &mut minor);
+            (xrandr.XRRQueryVersion)(self.display, &mut major, &mut minor);
 
-            let root = (self.xlib.XDefaultRootWindow)(self.display);
+            let root = (xlib.XDefaultRootWindow)(self.display);
             let resources = if (major == 1 && minor >= 3) || major > 1 {
-                (self.xrandr.XRRGetScreenResourcesCurrent)(self.display, root)
+                (xrandr.XRRGetScreenResourcesCurrent)(self.display, root)
             } else {
                 // WARNING: this function is supposedly very slow, on the order of hundreds of ms.
                 // Upon failure, `resources` will be null.
-                (self.xrandr.XRRGetScreenResources)(self.display, root)
+                (xrandr.XRRGetScreenResources)(self.display, root)
             };
 
             if resources.is_null() {
@@ -228,11 +229,11 @@ impl XConnection {
             let mut available;
             let mut has_primary = false;
 
-            let primary = (self.xrandr.XRRGetOutputPrimary)(self.display, root);
+            let primary = (xrandr.XRRGetOutputPrimary)(self.display, root);
             available = Vec::with_capacity((*resources).ncrtc as usize);
             for crtc_index in 0..(*resources).ncrtc {
                 let crtc_id = *((*resources).crtcs.offset(crtc_index as isize));
-                let crtc = (self.xrandr.XRRGetCrtcInfo)(self.display, resources, crtc_id);
+                let crtc = (xrandr.XRRGetCrtcInfo)(self.display, resources, crtc_id);
                 let is_active = (*crtc).width > 0 && (*crtc).height > 0 && (*crtc).noutput > 0;
                 if is_active {
                     let is_primary = *(*crtc).outputs.offset(0) == primary;
@@ -240,7 +241,7 @@ impl XConnection {
                     MonitorHandle::new(self, resources, crtc_id, crtc, is_primary)
                         .map(|monitor_id| available.push(monitor_id));
                 }
-                (self.xrandr.XRRFreeCrtcInfo)(crtc);
+                (xrandr.XRRFreeCrtcInfo)(crtc);
             }
 
             // If no monitors were detected as being primary, we just pick one ourselves!
@@ -251,7 +252,7 @@ impl XConnection {
                 }
             }
 
-            (self.xrandr.XRRFreeScreenResources)(resources);
+            (xrandr.XRRFreeScreenResources)(resources);
             available
         }
     }
@@ -280,10 +281,11 @@ impl XConnection {
     }
 
     pub fn select_xrandr_input(&self, root: Window) -> Result<c_int, XError> {
+        let xrandr = syms!(XRANDR_2_2_0);
         let has_xrandr = unsafe {
             let mut major = 0;
             let mut minor = 0;
-            (self.xrandr.XRRQueryVersion)(self.display, &mut major, &mut minor)
+            (xrandr.XRRQueryVersion)(self.display, &mut major, &mut minor)
         };
         assert!(
             has_xrandr == True,
@@ -293,7 +295,7 @@ impl XConnection {
         let mut event_offset = 0;
         let mut error_offset = 0;
         let status = unsafe {
-            (self.xrandr.XRRQueryExtension)(self.display, &mut event_offset, &mut error_offset)
+            (xrandr.XRRQueryExtension)(self.display, &mut event_offset, &mut error_offset)
         };
 
         if status != True {
@@ -302,7 +304,7 @@ impl XConnection {
         }
 
         let mask = RRCrtcChangeNotifyMask | RROutputPropertyNotifyMask | RRScreenChangeNotifyMask;
-        unsafe { (self.xrandr.XRRSelectInput)(self.display, root, mask) };
+        unsafe { (xrandr.XRRSelectInput)(self.display, root, mask) };
 
         Ok(event_offset)
     }

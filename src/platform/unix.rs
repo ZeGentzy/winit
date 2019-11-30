@@ -12,14 +12,10 @@ use crate::{
 };
 
 use crate::platform_impl::{
-    x11::{ffi::XVisualInfo, XConnection},
+    x11::ffi::XVisualInfo,
     EventLoop as LinuxEventLoop, EventLoopWindowTarget as LinuxEventLoopWindowTarget,
     Window as LinuxWindow,
 };
-
-// TODO: stupid hack so that glutin can do its work
-#[doc(hidden)]
-pub use crate::platform_impl::x11;
 
 pub use crate::platform_impl::{x11::util::WindowType as XWindowType, XNotSupported};
 
@@ -99,9 +95,6 @@ pub trait EventLoopWindowTargetExtUnix {
     /// True if the `EventLoopWindowTarget` uses X11.
     fn is_x11(&self) -> bool;
 
-    #[doc(hidden)]
-    fn xlib_xconnection(&self) -> Option<Arc<XConnection>>;
-
     /// Returns a pointer to the `wl_display` object of wayland that is used by this
     /// `EventLoopWindowTarget`.
     ///
@@ -120,15 +113,6 @@ impl<T> EventLoopWindowTargetExtUnix for EventLoopWindowTarget<T> {
     #[inline]
     fn is_x11(&self) -> bool {
         !self.p.is_wayland()
-    }
-
-    #[inline]
-    #[doc(hidden)]
-    fn xlib_xconnection(&self) -> Option<Arc<XConnection>> {
-        match self.p {
-            LinuxEventLoopWindowTarget::X(ref e) => Some(e.x_connection().clone()),
-            _ => None,
-        }
     }
 
     #[inline]
@@ -247,9 +231,6 @@ pub trait WindowExtUnix {
 
     fn xlib_screen_id(&self) -> Option<raw::c_int>;
 
-    #[doc(hidden)]
-    fn xlib_xconnection(&self) -> Option<Arc<XConnection>>;
-
     /// Set window urgency hint (`XUrgencyHint`). Only relevant on X.
     fn set_urgent(&self, is_urgent: bool);
 
@@ -308,15 +289,6 @@ impl WindowExtUnix for Window {
     fn xlib_screen_id(&self) -> Option<raw::c_int> {
         match self.window {
             LinuxWindow::X(ref w) => Some(w.xlib_screen_id()),
-            _ => None,
-        }
-    }
-
-    #[inline]
-    #[doc(hidden)]
-    fn xlib_xconnection(&self) -> Option<Arc<XConnection>> {
-        match self.window {
-            LinuxWindow::X(ref w) => Some(w.xlib_xconnection()),
             _ => None,
         }
     }

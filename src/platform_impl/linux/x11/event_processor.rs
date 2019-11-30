@@ -67,13 +67,15 @@ impl<T: 'static> EventProcessor<T> {
     }
 
     pub(super) fn poll(&self) -> bool {
+        let xlib = syms!(XLIB);
         let wt = get_xtarget(&self.target);
-        let result = unsafe { (wt.xconn.xlib.XPending)(wt.xconn.display) };
+        let result = unsafe { (xlib.XPending)(wt.xconn.display) };
 
         result != 0
     }
 
     pub(super) unsafe fn poll_one_event(&mut self, event_ptr: *mut ffi::XEvent) -> bool {
+        let xlib = syms!(XLIB);
         let wt = get_xtarget(&self.target);
         // This function is used to poll and remove a single event
         // from the Xlib event queue in a non-blocking, atomic way.
@@ -90,7 +92,7 @@ impl<T: 'static> EventProcessor<T> {
             1
         }
 
-        let result = (wt.xconn.xlib.XCheckIfEvent)(
+        let result = (xlib.XCheckIfEvent)(
             wt.xconn.display,
             event_ptr,
             Some(predicate),
@@ -104,6 +106,7 @@ impl<T: 'static> EventProcessor<T> {
     where
         F: FnMut(Event<T>),
     {
+        let xlib = syms!(XLIB);
         let wt = get_xtarget(&self.target);
         // XFilterEvent tells us when an event has been discarded by the input method.
         // Specifically, this involves all of the KeyPress events in compose/pre-edit sequences,
@@ -111,7 +114,7 @@ impl<T: 'static> EventProcessor<T> {
         // arrow keys from being detected twice.
         if ffi::True
             == unsafe {
-                (wt.xconn.xlib.XFilterEvent)(xev, {
+                (xlib.XFilterEvent)(xev, {
                     let xev: &ffi::XAnyEvent = xev.as_ref();
                     xev.window
                 })
@@ -149,7 +152,7 @@ impl<T: 'static> EventProcessor<T> {
                     || mapping.request == ffi::MappingKeyboard
                 {
                     unsafe {
-                        (wt.xconn.xlib.XRefreshKeyboardMapping)(xev.as_mut());
+                        (xlib.XRefreshKeyboardMapping)(xev.as_mut());
                     }
                     wt.xconn
                         .check_errors()
@@ -446,7 +449,7 @@ impl<T: 'static> EventProcessor<T> {
                             shared_state_lock.dpi_adjusted = None;
                         } else {
                             unsafe {
-                                (wt.xconn.xlib.XResizeWindow)(
+                                (xlib.XResizeWindow)(
                                     wt.xconn.display,
                                     xwindow,
                                     rounded_size.0 as c_uint,
@@ -561,7 +564,7 @@ impl<T: 'static> EventProcessor<T> {
                 if xkev.keycode != 0 {
                     let keysym = unsafe {
                         let mut keysym = 0;
-                        (wt.xconn.xlib.XLookupString)(
+                        (xlib.XLookupString)(
                             xkev,
                             ptr::null_mut(),
                             0,
@@ -1058,7 +1061,7 @@ impl<T: 'static> EventProcessor<T> {
                         let scancode = (keycode - 8) as u32;
 
                         let keysym = unsafe {
-                            (wt.xconn.xlib.XKeycodeToKeysym)(
+                            (xlib.XKeycodeToKeysym)(
                                 wt.xconn.display,
                                 xev.detail as ffi::KeyCode,
                                 0,

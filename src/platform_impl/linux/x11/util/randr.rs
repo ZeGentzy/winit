@@ -40,8 +40,9 @@ pub fn calc_dpi_factor(
 impl XConnection {
     // Retrieve DPI from Xft.dpi property
     pub unsafe fn get_xft_dpi(&self) -> Option<f64> {
-        (self.xlib.XrmInitialize)();
-        let resource_manager_str = (self.xlib.XResourceManagerString)(self.display);
+        let xlib = syms!(XLIB);
+        (xlib.XrmInitialize)();
+        let resource_manager_str = (xlib.XResourceManagerString)(self.display);
         if resource_manager_str == ptr::null_mut() {
             return None;
         }
@@ -61,8 +62,9 @@ impl XConnection {
         resources: *mut XRRScreenResources,
         crtc: *mut XRRCrtcInfo,
     ) -> Option<(String, f64, Vec<VideoMode>)> {
+        let (xlib, xrandr) = syms!(XLIB, XRANDR_2_2_0);
         let output_info =
-            (self.xrandr.XRRGetOutputInfo)(self.display, resources, *(*crtc).outputs.offset(0));
+            (xrandr.XRRGetOutputInfo)(self.display, resources, *(*crtc).outputs.offset(0));
         if output_info.is_null() {
             // When calling `XRRGetOutputInfo` on a virtual monitor (versus a physical display)
             // it's possible for it to return null.
@@ -71,8 +73,8 @@ impl XConnection {
             return None;
         }
 
-        let screen = (self.xlib.XDefaultScreen)(self.display);
-        let bit_depth = (self.xlib.XDefaultDepth)(self.display, screen);
+        let screen = (xlib.XDefaultScreen)(self.display);
+        let bit_depth = (xlib.XDefaultDepth)(self.display, screen);
 
         let output_modes =
             slice::from_raw_parts((*output_info).modes, (*output_info).nmode as usize);
@@ -119,24 +121,25 @@ impl XConnection {
             )
         };
 
-        (self.xrandr.XRRFreeOutputInfo)(output_info);
+        (xrandr.XRRFreeOutputInfo)(output_info);
         Some((name, hidpi_factor, modes))
     }
     pub fn set_crtc_config(&self, crtc_id: RRCrtc, mode_id: RRMode) -> Result<(), ()> {
+        let (xlib, xrandr) = syms!(XLIB, XRANDR_2_2_0);
         unsafe {
             let mut major = 0;
             let mut minor = 0;
-            (self.xrandr.XRRQueryVersion)(self.display, &mut major, &mut minor);
+            (xrandr.XRRQueryVersion)(self.display, &mut major, &mut minor);
 
-            let root = (self.xlib.XDefaultRootWindow)(self.display);
+            let root = (xlib.XDefaultRootWindow)(self.display);
             let resources = if (major == 1 && minor >= 3) || major > 1 {
-                (self.xrandr.XRRGetScreenResourcesCurrent)(self.display, root)
+                (xrandr.XRRGetScreenResourcesCurrent)(self.display, root)
             } else {
-                (self.xrandr.XRRGetScreenResources)(self.display, root)
+                (xrandr.XRRGetScreenResources)(self.display, root)
             };
 
-            let crtc = (self.xrandr.XRRGetCrtcInfo)(self.display, resources, crtc_id);
-            let status = (self.xrandr.XRRSetCrtcConfig)(
+            let crtc = (xrandr.XRRGetCrtcInfo)(self.display, resources, crtc_id);
+            let status = (xrandr.XRRSetCrtcConfig)(
                 self.display,
                 resources,
                 crtc_id,
@@ -149,8 +152,8 @@ impl XConnection {
                 1,
             );
 
-            (self.xrandr.XRRFreeCrtcInfo)(crtc);
-            (self.xrandr.XRRFreeScreenResources)(resources);
+            (xrandr.XRRFreeCrtcInfo)(crtc);
+            (xrandr.XRRFreeScreenResources)(resources);
 
             if status == Success as i32 {
                 Ok(())
@@ -160,22 +163,23 @@ impl XConnection {
         }
     }
     pub fn get_crtc_mode(&self, crtc_id: RRCrtc) -> RRMode {
+        let (xlib, xrandr) = syms!(XLIB, XRANDR_2_2_0);
         unsafe {
             let mut major = 0;
             let mut minor = 0;
-            (self.xrandr.XRRQueryVersion)(self.display, &mut major, &mut minor);
+            (xrandr.XRRQueryVersion)(self.display, &mut major, &mut minor);
 
-            let root = (self.xlib.XDefaultRootWindow)(self.display);
+            let root = (xlib.XDefaultRootWindow)(self.display);
             let resources = if (major == 1 && minor >= 3) || major > 1 {
-                (self.xrandr.XRRGetScreenResourcesCurrent)(self.display, root)
+                (xrandr.XRRGetScreenResourcesCurrent)(self.display, root)
             } else {
-                (self.xrandr.XRRGetScreenResources)(self.display, root)
+                (xrandr.XRRGetScreenResources)(self.display, root)
             };
 
-            let crtc = (self.xrandr.XRRGetCrtcInfo)(self.display, resources, crtc_id);
+            let crtc = (xrandr.XRRGetCrtcInfo)(self.display, resources, crtc_id);
             let mode = (*crtc).mode;
-            (self.xrandr.XRRFreeCrtcInfo)(crtc);
-            (self.xrandr.XRRFreeScreenResources)(resources);
+            (xrandr.XRRFreeCrtcInfo)(crtc);
+            (xrandr.XRRFreeScreenResources)(resources);
             mode
         }
     }

@@ -9,15 +9,6 @@ use super::ffi;
 
 /// A connection to an X server.
 pub struct XConnection {
-    pub xlib: ffi::Xlib,
-    /// Exposes XRandR functions from version < 1.5
-    pub xrandr: ffi::Xrandr_2_2_0,
-    /// Exposes XRandR functions from version = 1.5
-    pub xrandr_1_5: Option<ffi::Xrandr>,
-    pub xcursor: ffi::Xcursor,
-    pub xinput2: ffi::XInput2,
-    pub xlib_xcb: ffi::Xlib_xcb,
-    pub xrender: ffi::Xrender,
     pub display: *mut ffi::Display,
     pub x11_fd: c_int,
     pub latest_error: Mutex<Option<XError>>,
@@ -33,14 +24,14 @@ pub type XErrorHandler =
 impl XConnection {
     pub fn new(error_handler: XErrorHandler) -> Result<XConnection, XNotSupported> {
         // opening the libraries
-        let xlib = ffi::Xlib::open()?;
-        let xcursor = ffi::Xcursor::open()?;
-        let xrandr = ffi::Xrandr_2_2_0::open()?;
-        let xrandr_1_5 = ffi::Xrandr::open().ok();
-        let xinput2 = ffi::XInput2::open()?;
-        let xlib_xcb = ffi::Xlib_xcb::open()?;
-        let xrender = ffi::Xrender::open()?;
+        (*ffi::XLIB).as_ref()?;
+        (*ffi::XCURSOR).as_ref()?;
+        (*ffi::XRANDR_2_2_0).as_ref()?;
+        (*ffi::XINPUT).as_ref()?;
+        (*ffi::XLIB_XCB).as_ref()?;
+        (*ffi::XRENDER).as_ref()?;
 
+        let xlib = syms!(XLIB);
         unsafe { (xlib.XInitThreads)() };
         unsafe { (xlib.XSetErrorHandler)(error_handler) };
 
@@ -57,13 +48,6 @@ impl XConnection {
         let fd = unsafe { (xlib.XConnectionNumber)(display) };
 
         Ok(XConnection {
-            xlib,
-            xrandr,
-            xrandr_1_5,
-            xcursor,
-            xinput2,
-            xlib_xcb,
-            xrender,
             display,
             x11_fd: fd,
             latest_error: Mutex::new(None),
@@ -98,7 +82,8 @@ impl fmt::Debug for XConnection {
 impl Drop for XConnection {
     #[inline]
     fn drop(&mut self) {
-        unsafe { (self.xlib.XCloseDisplay)(self.display) };
+        let xlib = syms!(XLIB);
+        unsafe { (xlib.XCloseDisplay)(self.display) };
     }
 }
 
@@ -137,10 +122,10 @@ pub enum XNotSupported {
     XOpenDisplayFailed, // TODO: add better message
 }
 
-impl From<ffi::OpenError> for XNotSupported {
+impl From<&ffi::OpenError> for XNotSupported {
     #[inline]
-    fn from(err: ffi::OpenError) -> XNotSupported {
-        XNotSupported::LibraryOpenError(err)
+    fn from(err: &ffi::OpenError) -> XNotSupported {
+        XNotSupported::LibraryOpenError(err.clone())
     }
 }
 

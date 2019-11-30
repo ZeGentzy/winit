@@ -471,12 +471,13 @@ unsafe extern "C" fn x_error_callback(
     display: *mut x11::ffi::Display,
     event: *mut x11::ffi::XErrorEvent,
 ) -> c_int {
+    let xlib = syms!(XLIB);
     let xconn_lock = X11_BACKEND.lock();
     if let Ok(ref xconn) = *xconn_lock {
         // `assume_init` is safe here because the array consists of `MaybeUninit` values,
         // which do not require initialization.
         let mut buf: [MaybeUninit<c_char>; 1024] = MaybeUninit::uninit().assume_init();
-        (xconn.xlib.XGetErrorText)(
+        (xlib.XGetErrorText)(
             display,
             (*event).error_code as c_int,
             buf.as_mut_ptr() as *mut c_char,

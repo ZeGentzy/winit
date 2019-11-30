@@ -35,25 +35,29 @@ impl<'a, T> DerefMut for XSmartPointer<'a, T> {
 
 impl<'a, T> Drop for XSmartPointer<'a, T> {
     fn drop(&mut self) {
+        let xlib = syms!(XLIB);
         unsafe {
-            (self.xconn.xlib.XFree)(self.ptr as *mut _);
+            (xlib.XFree)(self.ptr as *mut _);
         }
     }
 }
 
 impl XConnection {
     pub fn alloc_class_hint(&self) -> XSmartPointer<'_, ffi::XClassHint> {
-        XSmartPointer::new(self, unsafe { (self.xlib.XAllocClassHint)() })
+        let xlib = syms!(XLIB);
+        XSmartPointer::new(self, unsafe { (xlib.XAllocClassHint)() })
             .expect("`XAllocClassHint` returned null; out of memory")
     }
 
     pub fn alloc_size_hints(&self) -> XSmartPointer<'_, ffi::XSizeHints> {
-        XSmartPointer::new(self, unsafe { (self.xlib.XAllocSizeHints)() })
+        let xlib = syms!(XLIB);
+        XSmartPointer::new(self, unsafe { (xlib.XAllocSizeHints)() })
             .expect("`XAllocSizeHints` returned null; out of memory")
     }
 
     pub fn alloc_wm_hints(&self) -> XSmartPointer<'_, ffi::XWMHints> {
-        XSmartPointer::new(self, unsafe { (self.xlib.XAllocWMHints)() })
+        let xlib = syms!(XLIB);
+        XSmartPointer::new(self, unsafe { (xlib.XAllocWMHints)() })
             .expect("`XAllocWMHints` returned null; out of memory")
     }
 }
