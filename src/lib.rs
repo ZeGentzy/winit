@@ -139,7 +139,6 @@ extern crate std_web as stdweb;
 #[macro_use]
 extern crate glutin_x11_sym;
 
-pub mod dpi;
 #[macro_use]
 pub mod error;
 pub mod event;
@@ -148,5 +147,6 @@ mod icon;
 pub mod monitor;
 mod platform_impl;
 pub mod window;
+pub use winit_types::dpi;
 
 pub mod platform;
