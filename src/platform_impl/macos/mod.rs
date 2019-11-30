@@ -13,7 +13,7 @@ mod view;
 mod window;
 mod window_delegate;
 
-use std::{fmt, ops::Deref, sync::Arc};
+use std::{ops::Deref, sync::Arc};
 
 pub use self::{
     event_loop::{EventLoop, EventLoopWindowTarget, Proxy as EventLoopProxy},
@@ -42,12 +42,6 @@ pub struct Window {
     _delegate: util::IdRef,
 }
 
-#[derive(Debug)]
-pub enum OsError {
-    CGError(core_graphics::base::CGError),
-    CreationError(&'static str),
-}
-
 unsafe impl Send for Window {}
 unsafe impl Sync for Window {}
 
@@ -67,14 +61,5 @@ impl Window {
     ) -> Result<Self, RootOsError> {
         let (window, _delegate) = UnownedWindow::new(attributes, pl_attribs)?;
         Ok(Window { window, _delegate })
-    }
-}
-
-impl fmt::Display for OsError {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        match self {
-            OsError::CGError(e) => f.pad(&format!("CGError {}", e)),
-            OsError::CreationError(e) => f.pad(e),
-        }
     }
 }

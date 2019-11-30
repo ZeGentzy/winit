@@ -1,6 +1,6 @@
 #![cfg(any(target_os = "linux", target_os = "dragonfly", target_os = "freebsd", target_os = "netbsd", target_os = "openbsd"))]
 
-use std::{collections::VecDeque, env, ffi::CStr, fmt, mem::MaybeUninit, os::raw::*, sync::Arc};
+use std::{collections::VecDeque, env, ffi::CStr, mem::MaybeUninit, os::raw::*, sync::Arc};
 
 use parking_lot::Mutex;
 use raw_window_handle::RawWindowHandle;
@@ -66,20 +66,6 @@ lazy_static! {
         { Mutex::new(XConnection::new(Some(x_error_callback)).map(Arc::new)) };
 }
 
-#[derive(Debug, Clone)]
-pub enum OsError {
-    XError(XError),
-    XMisc(&'static str),
-}
-
-impl fmt::Display for OsError {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> Result<(), fmt::Error> {
-        match self {
-            OsError::XError(e) => f.pad(&e.description),
-            OsError::XMisc(e) => f.pad(e),
-        }
-    }
-}
 
 pub enum Window {
     X(x11::Window),
