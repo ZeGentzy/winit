@@ -13,12 +13,11 @@ use crate::{
 };
 
 use crate::platform_impl::{
-    x11::ffi::XVisualInfo,
-    EventLoop as LinuxEventLoop, EventLoopWindowTarget as LinuxEventLoopWindowTarget,
-    Window as LinuxWindow,
+    x11::ffi::XVisualInfo, EventLoop as LinuxEventLoop,
+    EventLoopWindowTarget as LinuxEventLoopWindowTarget, Window as LinuxWindow,
 };
 
-pub use crate::platform_impl::{x11::util::WindowType as XWindowType};
+pub use crate::platform_impl::x11::util::WindowType as XWindowType;
 
 /// Theme for wayland client side decorations
 ///

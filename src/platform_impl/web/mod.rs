@@ -3,7 +3,6 @@
 // TODO: fullscreen API (stdweb PR required)
 
 mod device;
-mod error;
 mod event_loop;
 mod monitor;
 mod window;

@@ -1061,11 +1061,7 @@ impl<T: 'static> EventProcessor<T> {
                         let scancode = (keycode - 8) as u32;
 
                         let keysym = unsafe {
-                            (xlib.XKeycodeToKeysym)(
-                                wt.xconn.display,
-                                xev.detail as ffi::KeyCode,
-                                0,
-                            )
+                            (xlib.XKeycodeToKeysym)(wt.xconn.display, xev.detail as ffi::KeyCode, 0)
                         };
                         wt.xconn
                             .check_errors()

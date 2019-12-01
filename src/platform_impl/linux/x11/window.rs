@@ -16,17 +16,19 @@ use parking_lot::Mutex;
 
 use crate::{
     dpi::{LogicalPosition, LogicalSize},
-    error::{ExternalError, NotSupportedError, OsError as RootOsError},
     monitor::{MonitorHandle as RootMonitorHandle, VideoMode as RootVideoMode},
     platform_impl::{
         x11::{ime::ImeContextCreationError, MonitorHandle as X11MonitorHandle},
-        MonitorHandle as PlatformMonitorHandle, OsError, PlatformSpecificWindowBuilderAttributes,
+        MonitorHandle as PlatformMonitorHandle, PlatformSpecificWindowBuilderAttributes,
         VideoMode as PlatformVideoMode,
     },
     window::{CursorIcon, Fullscreen, Icon, WindowAttributes},
 };
 
-use super::{ffi, util, EventLoopWindowTarget, ImeSender, WindowId, XConnection, XError};
+use super::{ffi, util, EventLoopWindowTarget, ImeSender, WindowId, XConnection};
+
+use winit_types::error::Error;
+use winit_types::platform::OsError;
 
 #[derive(Debug)]
 pub struct SharedState {
@@ -108,7 +110,7 @@ impl UnownedWindow {
         event_loop: &EventLoopWindowTarget<T>,
         window_attrs: WindowAttributes,
         pl_attribs: PlatformSpecificWindowBuilderAttributes,
-    ) -> Result<UnownedWindow, RootOsError> {
+    ) -> Result<UnownedWindow, Error> {
         let xconn = &event_loop.xconn;
         let xlib = syms!(XLIB);
         let root = event_loop.root;
@@ -373,13 +375,9 @@ impl UnownedWindow {
             // Attempt to make keyboard input repeat detectable
             unsafe {
                 let mut supported_ptr = ffi::False;
-                (xlib.XkbSetDetectableAutoRepeat)(
-                    xconn.display,
-                    ffi::True,
-                    &mut supported_ptr,
-                );
+                (xlib.XkbSetDetectableAutoRepeat)(xconn.display, ffi::True, &mut supported_ptr);
                 if supported_ptr == ffi::False {
-                    return Err(os_error!(OsError::XMisc(
+                    return Err(make_oserror!(OsError::XMisc(
                         "`XkbSetDetectableAutoRepeat` failed"
                     )));
                 }
@@ -408,13 +406,12 @@ impl UnownedWindow {
             {
                 let result = event_loop.ime.borrow_mut().create_context(window.xwindow);
                 if let Err(err) = result {
-                    let e = match err {
-                        ImeContextCreationError::XError(err) => OsError::XError(err),
+                    return Err(match err {
+                        ImeContextCreationError::Error(err) => err,
                         ImeContextCreationError::Null => {
-                            OsError::XMisc("IME Context creation failed")
+                            make_oserror!(OsError::XMisc("IME Context creation failed"))
                         }
-                    };
-                    return Err(os_error!(e));
+                    });
                 }
             }
 
@@ -435,10 +432,7 @@ impl UnownedWindow {
         }
 
         // We never want to give the user a broken window, since by then, it's too late to handle.
-        xconn
-            .sync_with_server()
-            .map(|_| window)
-            .map_err(|x_err| os_error!(OsError::XError(x_err)))
+        xconn.sync_with_server().map(|_| window)
     }
 
     fn logicalize_coords(&self, (x, y): (i32, i32)) -> LogicalPosition {
@@ -927,7 +921,7 @@ impl UnownedWindow {
     }
 
     #[inline]
-    pub fn outer_position(&self) -> Result<LogicalPosition, NotSupportedError> {
+    pub fn outer_position(&self) -> Result<LogicalPosition, Error> {
         let extents = (*self.shared_state.lock()).frame_extents.clone();
         if let Some(extents) = extents {
             let logical = self.inner_position().unwrap();
@@ -948,7 +942,7 @@ impl UnownedWindow {
     }
 
     #[inline]
-    pub fn inner_position(&self) -> Result<LogicalPosition, NotSupportedError> {
+    pub fn inner_position(&self) -> Result<LogicalPosition, Error> {
         Ok(self.logicalize_coords(self.inner_position_physical()))
     }
 
@@ -1031,7 +1025,7 @@ impl UnownedWindow {
         self.set_inner_size_physical(width, height);
     }
 
-    fn update_normal_hints<F>(&self, callback: F) -> Result<(), XError>
+    fn update_normal_hints<F>(&self, callback: F) -> Result<(), Error>
     where
         F: FnOnce(&mut util::NormalHints) -> (),
     {
@@ -1172,7 +1166,7 @@ impl UnownedWindow {
     }
 
     #[inline]
-    pub fn set_cursor_grab(&self, grab: bool) -> Result<(), ExternalError> {
+    pub fn set_cursor_grab(&self, grab: bool) -> Result<(), Error> {
         let xlib = syms!(XLIB);
         let mut grabbed_lock = self.cursor_grabbed.lock();
         if grab == *grabbed_lock {
@@ -1222,11 +1216,9 @@ impl UnownedWindow {
                 ffi::GrabFrozen => Err("Cursor could not be grabbed: frozen by another client"),
                 _ => unreachable!(),
             }
-            .map_err(|err| ExternalError::Os(os_error!(OsError::XMisc(err))))
+            .map_err(|err| make_oserror!(OsError::XMisc(err)))
         } else {
-            self.xconn
-                .flush_requests()
-                .map_err(|err| ExternalError::Os(os_error!(OsError::XError(err))))
+            self.xconn.flush_requests()
         };
         if result.is_ok() {
             *grabbed_lock = grab;
@@ -1255,21 +1247,16 @@ impl UnownedWindow {
         self.current_monitor().hidpi_factor
     }
 
-    pub fn set_cursor_position_physical(&self, x: i32, y: i32) -> Result<(), ExternalError> {
+    pub fn set_cursor_position_physical(&self, x: i32, y: i32) -> Result<(), Error> {
         let xlib = syms!(XLIB);
         unsafe {
             (xlib.XWarpPointer)(self.xconn.display, 0, self.xwindow, 0, 0, 0, 0, x, y);
-            self.xconn
-                .flush_requests()
-                .map_err(|e| ExternalError::Os(os_error!(OsError::XError(e))))
+            self.xconn.flush_requests()
         }
     }
 
     #[inline]
-    pub fn set_cursor_position(
-        &self,
-        logical_position: LogicalPosition,
-    ) -> Result<(), ExternalError> {
+    pub fn set_cursor_position(&self, logical_position: LogicalPosition) -> Result<(), Error> {
         let (x, y) = logical_position.to_physical(self.hidpi_factor()).into();
         self.set_cursor_position_physical(x, y)
     }

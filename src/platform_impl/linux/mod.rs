@@ -5,11 +5,9 @@ use std::{collections::VecDeque, env, ffi::CStr, mem::MaybeUninit, os::raw::*, s
 use parking_lot::Mutex;
 use raw_window_handle::RawWindowHandle;
 use winit_types::error::Error;
-use winit_types::platform::{XError, OsError};
+use winit_types::platform::{OsError, XError};
 
-use self::x11::{
-    ffi::XVisualInfo, get_xtarget, util::WindowType as XWindowType, XConnection,
-};
+use self::x11::{ffi::XVisualInfo, get_xtarget, util::WindowType as XWindowType, XConnection};
 use crate::{
     dpi::{LogicalPosition, LogicalSize, PhysicalPosition, PhysicalSize},
     event::Event,
@@ -64,7 +62,6 @@ lazy_static! {
     pub static ref X11_BACKEND: Mutex<Result<Arc<XConnection>, Error>> =
         { Mutex::new(XConnection::new(Some(x_error_callback)).map(Arc::new)) };
 }
-
 
 pub enum Window {
     X(x11::Window),

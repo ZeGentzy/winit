@@ -13,7 +13,7 @@ mod xdisplay;
 pub use self::{
     monitor::{MonitorHandle, VideoMode},
     window::UnownedWindow,
-    xdisplay::{XConnection},
+    xdisplay::XConnection,
 };
 
 use std::{
@@ -100,8 +100,13 @@ impl<T: 'static> EventLoop<T> {
         }
         let ime = RefCell::new({
             match Ime::new(Arc::clone(&xconn)) {
-                Err(ImeCreationError::OpenFailure(err)) => panic!("[winit] Failed to open input method: {:#?}", err),
-                Err(ImeCreationError::SetDestroyCallbackFailed(err)) => panic!("[winit] Failed to set input method destruction callback: {:#?}", err),
+                Err(ImeCreationError::OpenFailure(err)) => {
+                    panic!("[winit] Failed to open input method: {:#?}", err)
+                }
+                Err(ImeCreationError::SetDestroyCallbackFailed(err)) => panic!(
+                    "[winit] Failed to set input method destruction callback: {:#?}",
+                    err
+                ),
                 Ok(result) => result,
             }
         });
@@ -131,11 +136,8 @@ impl<T: 'static> EventLoop<T> {
         unsafe {
             let mut xinput_major_ver = ffi::XI_2_Major;
             let mut xinput_minor_ver = ffi::XI_2_Minor;
-            if (xinput2.XIQueryVersion)(
-                xconn.display,
-                &mut xinput_major_ver,
-                &mut xinput_minor_ver,
-            ) != ffi::Success as libc::c_int
+            if (xinput2.XIQueryVersion)(xconn.display, &mut xinput_major_ver, &mut xinput_minor_ver)
+                != ffi::Success as libc::c_int
             {
                 panic!(
                     "[winit] X server has XInput extension {}.{} but does not support XInput2",

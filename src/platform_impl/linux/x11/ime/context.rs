@@ -14,18 +14,14 @@ pub enum ImeContextCreationError {
     Null,
 }
 
-unsafe fn create_pre_edit_attr<'a>(
-    ic_spot: &'a ffi::XPoint,
-) -> util::XSmartPointer<c_void> {
+unsafe fn create_pre_edit_attr<'a>(ic_spot: &'a ffi::XPoint) -> util::XSmartPointer<c_void> {
     let xlib = syms!(XLIB);
-    util::XSmartPointer::new(
-        (xlib.XVaCreateNestedList)(
-            0,
-            ffi::XNSpotLocation_0.as_ptr() as *const _,
-            ic_spot,
-            ptr::null_mut::<()>(),
-        ),
-    )
+    util::XSmartPointer::new((xlib.XVaCreateNestedList)(
+        0,
+        ffi::XNSpotLocation_0.as_ptr() as *const _,
+        ic_spot,
+        ptr::null_mut::<()>(),
+    ))
     .expect("XVaCreateNestedList returned NULL")
 }
 
@@ -63,10 +59,7 @@ impl ImeContext {
         })
     }
 
-    unsafe fn create_ic(
-        im: ffi::XIM,
-        window: ffi::Window,
-    ) -> Option<ffi::XIC> {
+    unsafe fn create_ic(im: ffi::XIM, window: ffi::Window) -> Option<ffi::XIC> {
         let xlib = syms!(XLIB);
         let ic = (xlib.XCreateIC)(
             im,

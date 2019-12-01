@@ -292,10 +292,7 @@ impl<'a> NormalHints {
 }
 
 impl XConnection {
-    pub fn get_wm_hints(
-        &self,
-        window: ffi::Window,
-    ) -> Result<XSmartPointer<ffi::XWMHints>, Error> {
+    pub fn get_wm_hints(&self, window: ffi::Window) -> Result<XSmartPointer<ffi::XWMHints>, Error> {
         let xlib = syms!(XLIB);
         let wm_hints = unsafe { (xlib.XGetWMHints)(self.display, window) };
         self.check_errors()?;
@@ -334,11 +331,7 @@ impl XConnection {
         self.check_errors().map(|_| NormalHints { size_hints })
     }
 
-    pub fn set_normal_hints(
-        &self,
-        window: ffi::Window,
-        normal_hints: NormalHints,
-    ) -> Flusher<'_> {
+    pub fn set_normal_hints(&self, window: ffi::Window, normal_hints: NormalHints) -> Flusher<'_> {
         let xlib = syms!(XLIB);
         unsafe {
             (xlib.XSetWMNormalHints)(self.display, window, normal_hints.size_hints.ptr);

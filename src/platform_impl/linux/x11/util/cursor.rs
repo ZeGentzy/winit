@@ -47,9 +47,7 @@ impl XConnection {
 
     fn load_cursor(&self, name: &[u8]) -> ffi::Cursor {
         let xcursor = syms!(XCURSOR);
-        unsafe {
-            (xcursor.XcursorLibraryLoadCursor)(self.display, name.as_ptr() as *const c_char)
-        }
+        unsafe { (xcursor.XcursorLibraryLoadCursor)(self.display, name.as_ptr() as *const c_char) }
     }
 
     fn load_first_existing_cursor(&self, names: &[&[u8]]) -> ffi::Cursor {

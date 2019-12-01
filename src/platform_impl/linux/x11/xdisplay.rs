@@ -26,11 +26,21 @@ pub type XErrorHandler =
 impl XConnection {
     pub fn new(error_handler: XErrorHandler) -> Result<XConnection, Error> {
         // opening the libraries
-        (*ffi::XLIB).as_ref().map_err(|err| make_oserror!(err.clone().into()))?;
-        (*ffi::XCURSOR).as_ref().map_err(|err| make_oserror!(err.clone().into()))?;
-        (*ffi::XRANDR_2_2_0).as_ref().map_err(|err| make_oserror!(err.clone().into()))?;
-        (*ffi::XINPUT2).as_ref().map_err(|err| make_oserror!(err.clone().into()))?;
-        (*ffi::XLIB_XCB).as_ref().map_err(|err| make_oserror!(err.clone().into()))?;
+        (*ffi::XLIB)
+            .as_ref()
+            .map_err(|err| make_oserror!(err.clone().into()))?;
+        (*ffi::XCURSOR)
+            .as_ref()
+            .map_err(|err| make_oserror!(err.clone().into()))?;
+        (*ffi::XRANDR_2_2_0)
+            .as_ref()
+            .map_err(|err| make_oserror!(err.clone().into()))?;
+        (*ffi::XINPUT2)
+            .as_ref()
+            .map_err(|err| make_oserror!(err.clone().into()))?;
+        (*ffi::XLIB_XCB)
+            .as_ref()
+            .map_err(|err| make_oserror!(err.clone().into()))?;
 
         let xlib = syms!(XLIB);
         unsafe { (xlib.XInitThreads)() };
@@ -40,7 +50,9 @@ impl XConnection {
         let display = unsafe {
             let display = (xlib.XOpenDisplay)(ptr::null());
             if display.is_null() {
-                return Err(make_oserror!(OsError::XNotSupported(XNotSupported::XOpenDisplayFailed)));
+                return Err(make_oserror!(OsError::XNotSupported(
+                    XNotSupported::XOpenDisplayFailed
+                )));
             }
             display
         };

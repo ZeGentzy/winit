@@ -292,7 +292,8 @@ impl<T: 'static> EventLoopProxy<T> {
 
 impl<T: 'static> EventLoop<T> {
     pub fn new() -> Result<EventLoop<T>, Error> {
-        let (display, mut event_queue) = Display::connect_to_env().map_err(|err| make_oserror!(OsError::WaylandConnectError(Arc::new(err))))?;
+        let (display, mut event_queue) = Display::connect_to_env()
+            .map_err(|err| make_oserror!(OsError::WaylandConnectError(Arc::new(err))))?;
 
         let display = Arc::new(display);
         let sink = Arc::new(Mutex::new(WindowEventsSink::new()));

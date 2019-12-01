@@ -7,7 +7,6 @@ use std::{
 
 use crate::{
     dpi::{LogicalPosition, LogicalSize},
-    error::{ExternalError, NotSupportedError, OsError as RootOsError},
     monitor::MonitorHandle as RootMonitorHandle,
     platform_impl::{
         platform::wayland::event_loop::{available_monitors, primary_monitor},
@@ -26,6 +25,8 @@ use smithay_client_toolkit::{
     surface::{get_dpi_factor, get_outputs},
     window::{ConceptFrame, Event as WEvent, State as WState, Theme, Window as SWindow},
 };
+
+use winit_types::error::{Error, ErrorType};
 
 use super::{event_loop::CursorManager, make_wid, EventLoopWindowTarget, MonitorHandle, WindowId};
 
@@ -48,7 +49,7 @@ impl Window {
         evlp: &EventLoopWindowTarget<T>,
         attributes: WindowAttributes,
         pl_attribs: PlAttributes,
-    ) -> Result<Window, RootOsError> {
+    ) -> Result<Window, Error> {
         let (width, height) = attributes.inner_size.map(Into::into).unwrap_or((800, 600));
         // Create the window
         let size = Arc::new(Mutex::new((width, height)));
@@ -191,13 +192,13 @@ impl Window {
     }
 
     #[inline]
-    pub fn outer_position(&self) -> Result<LogicalPosition, NotSupportedError> {
-        Err(NotSupportedError::new())
+    pub fn outer_position(&self) -> Result<LogicalPosition, Error> {
+        Err(make_error!(ErrorType::NotSupported))
     }
 
     #[inline]
-    pub fn inner_position(&self) -> Result<LogicalPosition, NotSupportedError> {
-        Err(NotSupportedError::new())
+    pub fn inner_position(&self) -> Result<LogicalPosition, Error> {
+        Err(make_error!(ErrorType::NotSupported))
     }
 
     #[inline]
@@ -312,14 +313,14 @@ impl Window {
     }
 
     #[inline]
-    pub fn set_cursor_grab(&self, grab: bool) -> Result<(), ExternalError> {
+    pub fn set_cursor_grab(&self, grab: bool) -> Result<(), Error> {
         *self.cursor_grab_changed.lock().unwrap() = Some(grab);
         Ok(())
     }
 
     #[inline]
-    pub fn set_cursor_position(&self, _pos: LogicalPosition) -> Result<(), ExternalError> {
-        Err(ExternalError::NotSupported(NotSupportedError::new()))
+    pub fn set_cursor_position(&self, _pos: LogicalPosition) -> Result<(), Error> {
+        Err(make_error!(ErrorType::NotSupported))
     }
 
     pub fn display(&self) -> &Display {
