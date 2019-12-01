@@ -11,7 +11,6 @@ use std::{
 
 use crate::{
     dpi::{LogicalPosition, LogicalSize},
-    error::{ExternalError, NotSupportedError, OsError as RootOsError},
     icon::Icon,
     monitor::{MonitorHandle as RootMonitorHandle, VideoMode as RootVideoMode},
     platform::macos::{ActivationPolicy, RequestUserAttentionType, WindowExtMacOS},
@@ -22,10 +21,10 @@ use crate::{
         util::{self, IdRef},
         view::{self, new_view},
         window_delegate::new_delegate,
-        OsError,
     },
     window::{CursorIcon, Fullscreen, WindowAttributes, WindowId as RootWindowId},
 };
+
 use cocoa::{
     appkit::{
         self, CGFloat, NSApp, NSApplication, NSApplicationActivationPolicy,
@@ -40,6 +39,8 @@ use objc::{
     declare::ClassDecl,
     runtime::{Class, Object, Sel, BOOL, NO, YES},
 };
+use winit_types::error::Error;
+use winit_types::platform::OsError;
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct Id(pub usize);
@@ -294,7 +295,7 @@ impl UnownedWindow {
     pub fn new(
         mut win_attribs: WindowAttributes,
         pl_attribs: PlatformSpecificWindowBuilderAttributes,
-    ) -> Result<(Arc<Self>, IdRef), RootOsError> {
+    ) -> Result<(Arc<Self>, IdRef), Error> {
         unsafe {
             if !msg_send![class!(NSThread), isMainThread] {
                 panic!("[winit] Windows can only be created on the main thread on macOS");
@@ -305,18 +306,18 @@ impl UnownedWindow {
 
         let ns_app = create_app(pl_attribs.activation_policy).ok_or_else(|| {
             unsafe { pool.drain() };
-            os_error!(OsError::CreationError("Couldn't create `NSApplication`"))
+            make_oserror!(OsError::CreationError("Couldn't create `NSApplication`"))
         })?;
 
         let ns_window = create_window(&win_attribs, &pl_attribs).ok_or_else(|| {
             unsafe { pool.drain() };
-            os_error!(OsError::CreationError("Couldn't create `NSWindow`"))
+            make_oserror!(OsError::CreationError("Couldn't create `NSWindow`"))
         })?;
 
         let (ns_view, cursor) =
             unsafe { create_view(*ns_window, &pl_attribs) }.ok_or_else(|| {
                 unsafe { pool.drain() };
-                os_error!(OsError::CreationError("Couldn't create `NSView`"))
+                make_oserror!(OsError::CreationError("Couldn't create `NSView`"))
             })?;
 
         let input_context = unsafe { util::create_input_context(*ns_view) };
@@ -419,7 +420,7 @@ impl UnownedWindow {
         AppState::queue_redraw(RootWindowId(self.id()));
     }
 
-    pub fn outer_position(&self) -> Result<LogicalPosition, NotSupportedError> {
+    pub fn outer_position(&self) -> Result<LogicalPosition, Error> {
         let frame_rect = unsafe { NSWindow::frame(*self.ns_window) };
         Ok((
             frame_rect.origin.x as f64,
@@ -428,7 +429,7 @@ impl UnownedWindow {
             .into())
     }
 
-    pub fn inner_position(&self) -> Result<LogicalPosition, NotSupportedError> {
+    pub fn inner_position(&self) -> Result<LogicalPosition, Error> {
         let content_rect = unsafe {
             NSWindow::contentRectForFrameRect_(*self.ns_window, NSWindow::frame(*self.ns_window))
         };
@@ -520,10 +521,10 @@ impl UnownedWindow {
     }
 
     #[inline]
-    pub fn set_cursor_grab(&self, grab: bool) -> Result<(), ExternalError> {
+    pub fn set_cursor_grab(&self, grab: bool) -> Result<(), Error> {
         // TODO: Do this for real https://stackoverflow.com/a/40922095/5435443
         CGDisplay::associate_mouse_and_mouse_cursor_position(!grab)
-            .map_err(|status| ExternalError::Os(os_error!(OsError::CGError(status))))
+            .map_err(|status| make_oserror!(OsError::CGError(status)))
     }
 
     #[inline]
@@ -550,16 +551,16 @@ impl UnownedWindow {
     pub fn set_cursor_position(
         &self,
         cursor_position: LogicalPosition,
-    ) -> Result<(), ExternalError> {
+    ) -> Result<(), Error> {
         let window_position = self.inner_position().unwrap();
         let point = appkit::CGPoint {
             x: (cursor_position.x + window_position.x) as CGFloat,
             y: (cursor_position.y + window_position.y) as CGFloat,
         };
         CGDisplay::warp_mouse_cursor_position(point)
-            .map_err(|e| ExternalError::Os(os_error!(OsError::CGError(e))))?;
+            .map_err(|e| make_oserror!(OsError::CGError(e)))?;
         CGDisplay::associate_mouse_and_mouse_cursor_position(true)
-            .map_err(|e| ExternalError::Os(os_error!(OsError::CGError(e))))?;
+            .map_err(|e| make_oserror!(OsError::CGError(e)))?;
 
         Ok(())
     }

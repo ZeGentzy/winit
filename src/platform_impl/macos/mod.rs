@@ -21,8 +21,10 @@ pub use self::{
     window::{Id as WindowId, PlatformSpecificWindowBuilderAttributes, UnownedWindow},
 };
 use crate::{
-    error::OsError as RootOsError, event::DeviceId as RootDeviceId, window::WindowAttributes,
+    event::DeviceId as RootDeviceId, window::WindowAttributes,
 };
+
+use winit_types::error::Error;
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct DeviceId;
@@ -58,7 +60,7 @@ impl Window {
         _window_target: &EventLoopWindowTarget<T>,
         attributes: WindowAttributes,
         pl_attribs: PlatformSpecificWindowBuilderAttributes,
-    ) -> Result<Self, RootOsError> {
+    ) -> Result<Self, Error> {
         let (window, _delegate) = UnownedWindow::new(attributes, pl_attribs)?;
         Ok(Window { window, _delegate })
     }
