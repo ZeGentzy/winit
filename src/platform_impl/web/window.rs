@@ -1,10 +1,11 @@
 use crate::dpi::{LogicalPosition, LogicalSize};
-use crate::error::{ExternalError, NotSupportedError, OsError as RootOE};
 use crate::icon::Icon;
 use crate::monitor::MonitorHandle as RootMH;
 use crate::window::{CursorIcon, Fullscreen, WindowAttributes, WindowId as RootWI};
 
 use raw_window_handle::web::WebHandle;
+
+use winit_types::error::Error;
 
 use super::{backend, monitor, EventLoopWindowTarget};
 
@@ -25,7 +26,7 @@ impl Window {
         target: &EventLoopWindowTarget<T>,
         attr: WindowAttributes,
         _: PlatformSpecificBuilderAttributes,
-    ) -> Result<Self, RootOE> {
+    ) -> Result<Self, Error> {
         let runner = target.runner.clone();
 
         let id = target.generate_id();
@@ -72,13 +73,13 @@ impl Window {
         (self.register_redraw_request)();
     }
 
-    pub fn outer_position(&self) -> Result<LogicalPosition, NotSupportedError> {
+    pub fn outer_position(&self) -> Result<LogicalPosition, Error> {
         let (x, y) = self.canvas.position();
 
         Ok(LogicalPosition { x, y })
     }
 
-    pub fn inner_position(&self) -> Result<LogicalPosition, NotSupportedError> {
+    pub fn inner_position(&self) -> Result<LogicalPosition, Error> {
         Ok(*self.position.borrow())
     }
 
@@ -178,13 +179,13 @@ impl Window {
     }
 
     #[inline]
-    pub fn set_cursor_position(&self, _position: LogicalPosition) -> Result<(), ExternalError> {
+    pub fn set_cursor_position(&self, _position: LogicalPosition) -> Result<(), Error> {
         // Intentionally a no-op, as the web does not support setting cursor positions
         Ok(())
     }
 
     #[inline]
-    pub fn set_cursor_grab(&self, _grab: bool) -> Result<(), ExternalError> {
+    pub fn set_cursor_grab(&self, _grab: bool) -> Result<(), Error> {
         // Intentionally a no-op, as the web does not (properly) support grabbing the cursor
         Ok(())
     }
