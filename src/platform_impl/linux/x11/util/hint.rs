@@ -1,6 +1,8 @@
 use std::slice;
 use std::sync::Arc;
 
+use winit_types::error::Error;
+
 use super::*;
 
 #[derive(Debug)]
@@ -293,7 +295,7 @@ impl XConnection {
     pub fn get_wm_hints(
         &self,
         window: ffi::Window,
-    ) -> Result<XSmartPointer<ffi::XWMHints>, XError> {
+    ) -> Result<XSmartPointer<ffi::XWMHints>, Error> {
         let xlib = syms!(XLIB);
         let wm_hints = unsafe { (xlib.XGetWMHints)(self.display, window) };
         self.check_errors()?;
@@ -317,7 +319,7 @@ impl XConnection {
         Flusher::new(self)
     }
 
-    pub fn get_normal_hints(&self, window: ffi::Window) -> Result<NormalHints, XError> {
+    pub fn get_normal_hints(&self, window: ffi::Window) -> Result<NormalHints, Error> {
         let xlib = syms!(XLIB);
         let size_hints = self.alloc_size_hints();
         let mut supplied_by_user = MaybeUninit::uninit();

@@ -17,7 +17,7 @@ pub fn calc_dpi_factor(
     if let Some(dpi_override) = dpi_override {
         if !validate_hidpi_factor(dpi_override) {
             panic!(
-                "`WINIT_HIDPI_FACTOR` invalid; DPI factors must be normal floats greater than 0. Got `{}`",
+                "[winit] `WINIT_HIDPI_FACTOR` invalid; DPI factors must be normal floats greater than 0. Got `{}`",
                 dpi_override,
             );
         }

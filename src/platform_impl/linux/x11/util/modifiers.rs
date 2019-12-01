@@ -53,7 +53,7 @@ impl ModifierKeymap {
             let keymap = (xlib.XGetModifierMapping)(xconn.display);
 
             if keymap.is_null() {
-                panic!("failed to allocate XModifierKeymap");
+                panic!("[winit] failed to allocate XModifierKeymap");
             }
 
             self.reset_from_x_keymap(&*keymap);

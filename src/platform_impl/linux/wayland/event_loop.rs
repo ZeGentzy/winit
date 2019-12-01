@@ -38,10 +38,13 @@ use smithay_client_toolkit::{
     output::OutputMgr,
     reexports::client::{
         protocol::{wl_keyboard, wl_output, wl_pointer, wl_registry, wl_seat, wl_touch},
-        ConnectError, Display, EventQueue, GlobalEvent,
+        Display, EventQueue, GlobalEvent,
     },
     Environment,
 };
+
+use winit_types::error::Error;
+use winit_types::platform::OsError;
 
 pub struct WindowEventsSink<T> {
     buffer: VecDeque<crate::event::Event<T>>,
@@ -288,8 +291,8 @@ impl<T: 'static> EventLoopProxy<T> {
 }
 
 impl<T: 'static> EventLoop<T> {
-    pub fn new() -> Result<EventLoop<T>, ConnectError> {
-        let (display, mut event_queue) = Display::connect_to_env()?;
+    pub fn new() -> Result<EventLoop<T>, Error> {
+        let (display, mut event_queue) = Display::connect_to_env().map_err(|err| make_oserror!(OsError::WaylandConnectError(Arc::new(err))))?;
 
         let display = Arc::new(display);
         let sink = Arc::new(Mutex::new(WindowEventsSink::new()));
@@ -1041,7 +1044,7 @@ pub fn primary_monitor(outputs: &OutputMgr) -> MonitorHandle {
                 mgr: outputs.clone(),
             }
         } else {
-            panic!("No monitor is available.")
+            panic!("[winit] No monitor is available.")
         }
     })
 }

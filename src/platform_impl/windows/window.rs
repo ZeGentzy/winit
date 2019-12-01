@@ -31,7 +31,6 @@ use winapi::{
 
 use crate::{
     dpi::{LogicalPosition, LogicalSize, PhysicalSize},
-    error::{ExternalError, NotSupportedError, OsError as RootOsError},
     monitor::MonitorHandle as RootMonitorHandle,
     platform_impl::platform::{
         dpi::{dpi_to_scale_factor, hwnd_dpi},

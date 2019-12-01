@@ -4,11 +4,13 @@ use std::{
     sync::Arc,
 };
 
-use super::{ffi, util, XConnection, XError};
+use super::{ffi, util, XConnection};
+
+use winit_types::error::Error;
 
 #[derive(Debug)]
 pub enum ImeContextCreationError {
-    XError(XError),
+    Error(Error),
     Null,
 }
 
@@ -53,7 +55,7 @@ impl ImeContext {
         let ic = ic.ok_or(ImeContextCreationError::Null)?;
         xconn
             .check_errors()
-            .map_err(ImeContextCreationError::XError)?;
+            .map_err(ImeContextCreationError::Error)?;
 
         Ok(ImeContext {
             ic,
@@ -105,7 +107,7 @@ impl ImeContext {
         }
     }
 
-    pub fn focus(&self, xconn: &Arc<XConnection>) -> Result<(), XError> {
+    pub fn focus(&self, xconn: &Arc<XConnection>) -> Result<(), Error> {
         let xlib = syms!(XLIB);
         unsafe {
             (xlib.XSetICFocus)(self.ic);
@@ -113,7 +115,7 @@ impl ImeContext {
         xconn.check_errors()
     }
 
-    pub fn unfocus(&self, xconn: &Arc<XConnection>) -> Result<(), XError> {
+    pub fn unfocus(&self, xconn: &Arc<XConnection>) -> Result<(), Error> {
         let xlib = syms!(XLIB);
         unsafe {
             (xlib.XUnsetICFocus)(self.ic);

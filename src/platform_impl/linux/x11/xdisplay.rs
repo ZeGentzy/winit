@@ -1,7 +1,9 @@
-use std::{collections::HashMap, error::Error, fmt, os::raw::c_int, ptr};
+use std::{collections::HashMap, fmt, os::raw::c_int, ptr};
 
 use libc;
 use parking_lot::Mutex;
+use winit_types::error::Error;
+use winit_types::platform::{OsError, XNotSupported};
 
 use crate::window::CursorIcon;
 
@@ -11,7 +13,7 @@ use super::ffi;
 pub struct XConnection {
     pub display: *mut ffi::Display,
     pub x11_fd: c_int,
-    pub latest_error: Mutex<Option<XError>>,
+    pub latest_error: Mutex<Option<Error>>,
     pub cursor_cache: Mutex<HashMap<Option<CursorIcon>, ffi::Cursor>>,
 }
 
@@ -22,14 +24,13 @@ pub type XErrorHandler =
     Option<unsafe extern "C" fn(*mut ffi::Display, *mut ffi::XErrorEvent) -> libc::c_int>;
 
 impl XConnection {
-    pub fn new(error_handler: XErrorHandler) -> Result<XConnection, XNotSupported> {
+    pub fn new(error_handler: XErrorHandler) -> Result<XConnection, Error> {
         // opening the libraries
-        (*ffi::XLIB).as_ref()?;
-        (*ffi::XCURSOR).as_ref()?;
-        (*ffi::XRANDR_2_2_0).as_ref()?;
-        (*ffi::XINPUT).as_ref()?;
-        (*ffi::XLIB_XCB).as_ref()?;
-        (*ffi::XRENDER).as_ref()?;
+        (*ffi::XLIB).as_ref().map_err(|err| make_oserror!(err.clone().into()))?;
+        (*ffi::XCURSOR).as_ref().map_err(|err| make_oserror!(err.clone().into()))?;
+        (*ffi::XRANDR_2_2_0).as_ref().map_err(|err| make_oserror!(err.clone().into()))?;
+        (*ffi::XINPUT2).as_ref().map_err(|err| make_oserror!(err.clone().into()))?;
+        (*ffi::XLIB_XCB).as_ref().map_err(|err| make_oserror!(err.clone().into()))?;
 
         let xlib = syms!(XLIB);
         unsafe { (xlib.XInitThreads)() };
@@ -39,7 +40,7 @@ impl XConnection {
         let display = unsafe {
             let display = (xlib.XOpenDisplay)(ptr::null());
             if display.is_null() {
-                return Err(XNotSupported::XOpenDisplayFailed);
+                return Err(make_oserror!(OsError::XNotSupported(XNotSupported::XOpenDisplayFailed)));
             }
             display
         };
@@ -57,7 +58,7 @@ impl XConnection {
 
     /// Checks whether an error has been triggered by the previous function calls.
     #[inline]
-    pub fn check_errors(&self) -> Result<(), XError> {
+    pub fn check_errors(&self) -> Result<(), Error> {
         let error = self.latest_error.lock().take();
         if let Some(error) = error {
             Err(error)

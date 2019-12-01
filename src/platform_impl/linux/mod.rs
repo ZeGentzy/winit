@@ -4,15 +4,14 @@ use std::{collections::VecDeque, env, ffi::CStr, mem::MaybeUninit, os::raw::*, s
 
 use parking_lot::Mutex;
 use raw_window_handle::RawWindowHandle;
-use smithay_client_toolkit::reexports::client::ConnectError;
+use winit_types::error::Error;
+use winit_types::platform::{XError, OsError};
 
-pub use self::x11::XNotSupported;
 use self::x11::{
-    ffi::XVisualInfo, get_xtarget, util::WindowType as XWindowType, XConnection, XError,
+    ffi::XVisualInfo, get_xtarget, util::WindowType as XWindowType, XConnection,
 };
 use crate::{
     dpi::{LogicalPosition, LogicalSize, PhysicalPosition, PhysicalSize},
-    error::{ExternalError, NotSupportedError, OsError as RootOsError},
     event::Event,
     event_loop::{ControlFlow, EventLoopClosed, EventLoopWindowTarget as RootELW},
     icon::Icon,
@@ -62,7 +61,7 @@ impl Default for PlatformSpecificWindowBuilderAttributes {
 }
 
 lazy_static! {
-    pub static ref X11_BACKEND: Mutex<Result<Arc<XConnection>, XNotSupported>> =
+    pub static ref X11_BACKEND: Mutex<Result<Arc<XConnection>, Error>> =
         { Mutex::new(XConnection::new(Some(x_error_callback)).map(Arc::new)) };
 }
 
@@ -198,7 +197,7 @@ impl Window {
         window_target: &EventLoopWindowTarget<T>,
         attribs: WindowAttributes,
         pl_attribs: PlatformSpecificWindowBuilderAttributes,
-    ) -> Result<Self, RootOsError> {
+    ) -> Result<Self, Error> {
         match *window_target {
             EventLoopWindowTarget::Wayland(ref window_target) => {
                 wayland::Window::new(window_target, attribs, pl_attribs).map(Window::Wayland)
@@ -234,7 +233,7 @@ impl Window {
     }
 
     #[inline]
-    pub fn outer_position(&self) -> Result<LogicalPosition, NotSupportedError> {
+    pub fn outer_position(&self) -> Result<LogicalPosition, Error> {
         match self {
             &Window::X(ref w) => w.outer_position(),
             &Window::Wayland(ref w) => w.outer_position(),
@@ -242,7 +241,7 @@ impl Window {
     }
 
     #[inline]
-    pub fn inner_position(&self) -> Result<LogicalPosition, NotSupportedError> {
+    pub fn inner_position(&self) -> Result<LogicalPosition, Error> {
         match self {
             &Window::X(ref m) => m.inner_position(),
             &Window::Wayland(ref m) => m.inner_position(),
@@ -314,7 +313,7 @@ impl Window {
     }
 
     #[inline]
-    pub fn set_cursor_grab(&self, grab: bool) -> Result<(), ExternalError> {
+    pub fn set_cursor_grab(&self, grab: bool) -> Result<(), Error> {
         match self {
             &Window::X(ref window) => window.set_cursor_grab(grab),
             &Window::Wayland(ref window) => window.set_cursor_grab(grab),
@@ -338,7 +337,7 @@ impl Window {
     }
 
     #[inline]
-    pub fn set_cursor_position(&self, position: LogicalPosition) -> Result<(), ExternalError> {
+    pub fn set_cursor_position(&self, position: LogicalPosition) -> Result<(), Error> {
         match self {
             &Window::X(ref w) => w.set_cursor_position(position),
             &Window::Wayland(ref w) => w.set_cursor_position(position),
@@ -471,12 +470,12 @@ unsafe extern "C" fn x_error_callback(
         );
         let description = CStr::from_ptr(buf.as_ptr() as *const c_char).to_string_lossy();
 
-        let error = XError {
+        let error = make_oserror!(OsError::XError(XError {
             description: description.into_owned(),
             error_code: (*event).error_code,
             request_code: (*event).request_code,
             minor_code: (*event).minor_code,
-        };
+        }));
 
         error!("X11 error: {:#?}", error);
 
@@ -525,7 +524,7 @@ impl<T: 'static> EventLoop<T> {
                         .expect("Failed to initialize Wayland backend");
                 }
                 _ => panic!(
-                    "Unknown environment variable value for {}, try one of `x11`,`wayland`",
+                    "[winit] Unknown environment variable value for {}, try one of `x11`,`wayland`",
                     BACKEND_PREFERENCE_ENV_VAR,
                 ),
             }
@@ -541,30 +540,29 @@ impl<T: 'static> EventLoop<T> {
             Err(err) => err,
         };
 
-        let err_string = format!(
-            "Failed to initialize any backend! Wayland status: {:?} X11 status: {:?}",
+        panic!(
+            "[winit] Failed to initialize any backend! Wayland status: {:?} X11 status: {:?}",
             wayland_err, x11_err,
         );
-        panic!(err_string);
     }
 
-    pub fn new_wayland() -> Result<EventLoop<T>, ConnectError> {
+    pub fn new_wayland() -> Result<EventLoop<T>, Error> {
         assert_is_main_thread("new_wayland_any_thread");
 
         EventLoop::new_wayland_any_thread()
     }
 
-    pub fn new_wayland_any_thread() -> Result<EventLoop<T>, ConnectError> {
+    pub fn new_wayland_any_thread() -> Result<EventLoop<T>, Error> {
         wayland::EventLoop::new().map(EventLoop::Wayland)
     }
 
-    pub fn new_x11() -> Result<EventLoop<T>, XNotSupported> {
+    pub fn new_x11() -> Result<EventLoop<T>, Error> {
         assert_is_main_thread("new_x11_any_thread");
 
         EventLoop::new_x11_any_thread()
     }
 
-    pub fn new_x11_any_thread() -> Result<EventLoop<T>, XNotSupported> {
+    pub fn new_x11_any_thread() -> Result<EventLoop<T>, Error> {
         X11_BACKEND
             .lock()
             .as_ref()
@@ -683,7 +681,7 @@ fn sticky_exit_callback<T, F>(
 fn assert_is_main_thread(suggested_method: &str) {
     if !is_main_thread() {
         panic!(
-            "Initializing the event loop outside of the main thread is a significant \
+            "[winit] Initializing the event loop outside of the main thread is a significant \
              cross-platform compatibility hazard. If you really, absolutely need to create an \
              EventLoop on a different thread, please use the `EventLoopExtUnix::{}` function.",
             suggested_method

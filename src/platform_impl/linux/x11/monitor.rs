@@ -1,13 +1,14 @@
 use std::os::raw::*;
 
 use parking_lot::Mutex;
+use winit_types::error::Error;
 
 use super::{
     ffi::{
         RRCrtc, RRCrtcChangeNotifyMask, RRMode, RROutputPropertyNotifyMask,
         RRScreenChangeNotifyMask, True, Window, XRRCrtcInfo, XRRScreenResources,
     },
-    util, XConnection, XError,
+    util, XConnection,
 };
 use crate::{
     dpi::{PhysicalPosition, PhysicalSize},
@@ -280,7 +281,7 @@ impl XConnection {
             .unwrap_or_else(MonitorHandle::dummy)
     }
 
-    pub fn select_xrandr_input(&self, root: Window) -> Result<c_int, XError> {
+    pub fn select_xrandr_input(&self, root: Window) -> Result<c_int, Error> {
         let xrandr = syms!(XRANDR_2_2_0);
         let has_xrandr = unsafe {
             let mut major = 0;

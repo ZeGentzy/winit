@@ -27,7 +27,9 @@ use std::{
     ptr,
 };
 
-use super::{ffi, XConnection, XError};
+use super::{ffi, XConnection};
+
+use winit_types::error::Error;
 
 pub fn reinterpret<'a, A, B>(a: &'a A) -> &'a B {
     let b_ptr = a as *const _ as *const B;
@@ -62,12 +64,12 @@ impl<'a> Flusher<'a> {
     }
 
     // "I want this request sent now!"
-    pub fn flush(self) -> Result<(), XError> {
+    pub fn flush(self) -> Result<(), Error> {
         self.xconn.flush_requests()
     }
 
     // "I want the response now too!"
-    pub fn sync(self) -> Result<(), XError> {
+    pub fn sync(self) -> Result<(), Error> {
         self.xconn.sync_with_server()
     }
 
@@ -85,7 +87,7 @@ impl XConnection {
     // 4. Calls that have a return dependent on a response (i.e. `XGetWindowProperty`) sync internally.
     //    When in doubt, check the X11 source; if a function calls `_XReply`, it flushes and waits.
     // All util functions that abstract an async function will return a `Flusher`.
-    pub fn flush_requests(&self) -> Result<(), XError> {
+    pub fn flush_requests(&self) -> Result<(), Error> {
         let xlib = syms!(XLIB);
         unsafe { (xlib.XFlush)(self.display) };
         //println!("XFlush");
@@ -94,7 +96,7 @@ impl XConnection {
         self.check_errors()
     }
 
-    pub fn sync_with_server(&self) -> Result<(), XError> {
+    pub fn sync_with_server(&self) -> Result<(), Error> {
         let xlib = syms!(XLIB);
         unsafe { (xlib.XSync)(self.display, ffi::False) };
         //println!("XSync");

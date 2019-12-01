@@ -1,9 +1,9 @@
 //! The `Window` struct and associated types.
 use std::fmt;
+use winit_types::error::Error;
 
 use crate::{
     dpi::{LogicalPosition, LogicalSize},
-    error::{ExternalError, NotSupportedError, OsError},
     event_loop::EventLoopWindowTarget,
     monitor::{MonitorHandle, VideoMode},
     platform_impl,
@@ -330,7 +330,7 @@ impl WindowBuilder {
     pub fn build<T: 'static>(
         self,
         window_target: &EventLoopWindowTarget<T>,
-    ) -> Result<Window, OsError> {
+    ) -> Result<Window, Error> {
         platform_impl::Window::new(&window_target.p, self.window, self.platform_specific).map(
             |window| {
                 window.request_redraw();
@@ -355,7 +355,7 @@ impl Window {
     ///
     /// [`WindowBuilder::new().build(event_loop)`]: crate::window::WindowBuilder::build
     #[inline]
-    pub fn new<T: 'static>(event_loop: &EventLoopWindowTarget<T>) -> Result<Window, OsError> {
+    pub fn new<T: 'static>(event_loop: &EventLoopWindowTarget<T>) -> Result<Window, Error> {
         let builder = WindowBuilder::new();
         builder.build(event_loop)
     }
@@ -422,7 +422,7 @@ impl Window {
     ///
     /// [safe area]: https://developer.apple.com/documentation/uikit/uiview/2891103-safeareainsets?language=objc
     #[inline]
-    pub fn inner_position(&self) -> Result<LogicalPosition, NotSupportedError> {
+    pub fn inner_position(&self) -> Result<LogicalPosition, Error> {
         self.window.inner_position()
     }
 
@@ -441,7 +441,7 @@ impl Window {
     /// - **iOS:** Can only be called on the main thread. Returns the top left coordinates of the
     ///   window in the screen space coordinate system.
     #[inline]
-    pub fn outer_position(&self) -> Result<LogicalPosition, NotSupportedError> {
+    pub fn outer_position(&self) -> Result<LogicalPosition, Error> {
         self.window.outer_position()
     }
 
@@ -690,7 +690,7 @@ impl Window {
     /// - **iOS:** Always returns an `Err`.
     /// - **Web:** Has no effect.
     #[inline]
-    pub fn set_cursor_position(&self, position: LogicalPosition) -> Result<(), ExternalError> {
+    pub fn set_cursor_position(&self, position: LogicalPosition) -> Result<(), Error> {
         self.window.set_cursor_position(position)
     }
 
@@ -706,7 +706,7 @@ impl Window {
     /// - **iOS:** Always returns an Err.
     /// - **Web:** Has no effect.
     #[inline]
-    pub fn set_cursor_grab(&self, grab: bool) -> Result<(), ExternalError> {
+    pub fn set_cursor_grab(&self, grab: bool) -> Result<(), Error> {
         self.window.set_cursor_grab(grab)
     }
 

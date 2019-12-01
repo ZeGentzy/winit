@@ -13,7 +13,7 @@ mod xdisplay;
 pub use self::{
     monitor::{MonitorHandle, VideoMode},
     window::UnownedWindow,
-    xdisplay::{XConnection, XError, XNotSupported},
+    xdisplay::{XConnection},
 };
 
 use std::{
@@ -30,6 +30,7 @@ use std::{
 };
 
 use libc::{self, setlocale, LC_CTYPE};
+use winit_types::error::Error;
 
 use self::{
     dnd::{Dnd, DndState},
@@ -38,7 +39,6 @@ use self::{
     util::modifiers::ModifierKeymap,
 };
 use crate::{
-    error::OsError as RootOsError,
     event::{Event, StartCause, WindowEvent},
     event_loop::{ControlFlow, EventLoopClosed, EventLoopWindowTarget as RootELW},
     platform_impl::{platform::sticky_exit_callback, PlatformSpecificWindowBuilderAttributes},
@@ -99,11 +99,11 @@ impl<T: 'static> EventLoop<T> {
             setlocale(LC_CTYPE, b"\0".as_ptr() as *const _);
         }
         let ime = RefCell::new({
-            let result = Ime::new(Arc::clone(&xconn));
-            if let Err(ImeCreationError::OpenFailure(ref state)) = result {
-                panic!(format!("Failed to open input method: {:#?}", state));
+            match Ime::new(Arc::clone(&xconn)) {
+                Err(ImeCreationError::OpenFailure(err)) => panic!("[winit] Failed to open input method: {:#?}", err),
+                Err(ImeCreationError::SetDestroyCallbackFailed(err)) => panic!("[winit] Failed to set input method destruction callback: {:#?}", err),
+                Ok(result) => result,
             }
-            result.expect("Failed to set input method destruction callback")
         });
 
         let randr_event_offset = xconn
@@ -122,7 +122,7 @@ impl<T: 'static> EventLoop<T> {
             );
 
             if res == ffi::False {
-                panic!("X server missing XInput extension");
+                panic!("[winit] X server missing XInput extension");
             }
 
             ext
@@ -138,7 +138,7 @@ impl<T: 'static> EventLoop<T> {
             ) != ffi::Success as libc::c_int
             {
                 panic!(
-                    "X server has XInput extension {}.{} but does not support XInput2",
+                    "[winit] X server has XInput extension {}.{} but does not support XInput2",
                     xinput_major_ver, xinput_minor_ver,
                 );
             }
@@ -504,7 +504,7 @@ impl Window {
         event_loop: &EventLoopWindowTarget<T>,
         attribs: WindowAttributes,
         pl_attribs: PlatformSpecificWindowBuilderAttributes,
-    ) -> Result<Self, RootOsError> {
+    ) -> Result<Self, Error> {
         let window = Arc::new(UnownedWindow::new(&event_loop, attribs, pl_attribs)?);
         event_loop
             .windows

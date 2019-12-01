@@ -3,6 +3,7 @@
 use std::{os::raw, ptr};
 
 use smithay_client_toolkit::window::{ButtonState, Theme};
+use winit_types::error::Error;
 
 use crate::{
     dpi::LogicalSize,
@@ -17,7 +18,7 @@ use crate::platform_impl::{
     Window as LinuxWindow,
 };
 
-pub use crate::platform_impl::{x11::util::WindowType as XWindowType, XNotSupported};
+pub use crate::platform_impl::{x11::util::WindowType as XWindowType};
 
 /// Theme for wayland client side decorations
 ///
@@ -134,7 +135,7 @@ pub trait EventLoopExtUnix {
     ///
     /// If called outside the main thread. To initialize an X11 event loop outside
     /// the main thread, use [`new_x11_any_thread`](#tymethod.new_x11_any_thread).
-    fn new_x11() -> Result<Self, XNotSupported>
+    fn new_x11() -> Result<Self, Error>
     where
         Self: Sized;
 
@@ -160,7 +161,7 @@ pub trait EventLoopExtUnix {
     ///
     /// This method bypasses the cross-platform compatibility requirement
     /// that `EventLoop` be created on the main thread.
-    fn new_x11_any_thread() -> Result<Self, XNotSupported>
+    fn new_x11_any_thread() -> Result<Self, Error>
     where
         Self: Sized;
 
@@ -187,7 +188,7 @@ impl<T> EventLoopExtUnix for EventLoop<T> {
     }
 
     #[inline]
-    fn new_x11_any_thread() -> Result<Self, XNotSupported> {
+    fn new_x11_any_thread() -> Result<Self, Error> {
         LinuxEventLoop::new_x11_any_thread().map(wrap_ev)
     }
 
@@ -201,7 +202,7 @@ impl<T> EventLoopExtUnix for EventLoop<T> {
     }
 
     #[inline]
-    fn new_x11() -> Result<Self, XNotSupported> {
+    fn new_x11() -> Result<Self, Error> {
         LinuxEventLoop::new_x11().map(wrap_ev)
     }
 

@@ -1,5 +1,7 @@
 use std::cmp;
 
+use winit_types::error::Error;
+
 use super::*;
 use crate::dpi::{LogicalPosition, LogicalSize};
 
@@ -182,7 +184,7 @@ impl XConnection {
         &self,
         window: ffi::Window,
         root: ffi::Window,
-    ) -> Result<TranslatedCoords, XError> {
+    ) -> Result<TranslatedCoords, Error> {
         let xlib = syms!(XLIB);
         let mut coords = TranslatedCoords::default();
 
@@ -204,7 +206,7 @@ impl XConnection {
     }
 
     // This is adequate for inner_size
-    pub fn get_geometry(&self, window: ffi::Window) -> Result<Geometry, XError> {
+    pub fn get_geometry(&self, window: ffi::Window) -> Result<Geometry, Error> {
         let xlib = syms!(XLIB);
         let mut geometry = Geometry::default();
 
@@ -268,7 +270,7 @@ impl XConnection {
         client_list.map(|client_list| client_list.contains(&window))
     }
 
-    fn get_parent_window(&self, window: ffi::Window) -> Result<ffi::Window, XError> {
+    fn get_parent_window(&self, window: ffi::Window) -> Result<ffi::Window, Error> {
         let xlib = syms!(XLIB);
         let parent = unsafe {
             let mut root = 0;
@@ -300,7 +302,7 @@ impl XConnection {
         &self,
         window: ffi::Window,
         root: ffi::Window,
-    ) -> Result<ffi::Window, XError> {
+    ) -> Result<ffi::Window, Error> {
         let mut outer_window = window;
         loop {
             let candidate = self.get_parent_window(outer_window)?;

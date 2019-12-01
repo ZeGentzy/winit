@@ -23,7 +23,7 @@ impl XConnection {
         };
 
         if pixmap == 0 {
-            panic!("failed to allocate pixmap for cursor");
+            panic!("[winit] failed to allocate pixmap for cursor");
         }
 
         unsafe {
