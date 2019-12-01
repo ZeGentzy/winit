@@ -95,7 +95,7 @@ unsafe fn get_view_class(root_view_class: &'static Class) -> &'static Class {
         let is_uiview: BOOL = msg_send![root_view_class, isSubclassOfClass: uiview_class];
         assert_eq!(
             is_uiview, YES,
-            "`root_view_class` must inherit from `UIView`"
+            "[winit] `root_view_class` must inherit from `UIView`"
         );
 
         extern "C" fn draw_rect(object: &Object, _: Sel, rect: CGRect) {
@@ -162,7 +162,7 @@ unsafe fn get_view_class(root_view_class: &'static Class) -> &'static Class {
                         && hidpi_factor.is_finite()
                         && hidpi_factor.is_sign_positive()
                         && hidpi_factor > 0.0,
-                    "invalid hidpi_factor set on UIView",
+                    "[winit] invalid hidpi_factor set on UIView",
                 );
                 let bounds: CGRect = msg_send![object, bounds];
                 let screen: id = msg_send![window, screen];
@@ -235,7 +235,7 @@ unsafe fn get_view_class(root_view_class: &'static Class) -> &'static Class {
                         // 2 is UITouchPhase::Stationary and is not expected here
                         UITouchPhase::Ended => TouchPhase::Ended,
                         UITouchPhase::Cancelled => TouchPhase::Cancelled,
-                        _ => panic!("unexpected touch phase: {:?}", phase as i32),
+                        _ => panic!("[winit] unexpected touch phase: {:?}", phase as i32),
                     };
 
                     touch_events.push(Event::WindowEvent {
@@ -410,9 +410,9 @@ pub unsafe fn create_view(
     let class = get_view_class(platform_attributes.root_view_class);
 
     let view: id = msg_send![class, alloc];
-    assert!(!view.is_null(), "Failed to create `UIView` instance");
+    assert!(!view.is_null(), "[winit] Failed to create `UIView` instance");
     let view: id = msg_send![view, initWithFrame: frame];
-    assert!(!view.is_null(), "Failed to initialize `UIView` instance");
+    assert!(!view.is_null(), "[winit] Failed to initialize `UIView` instance");
     let () = msg_send![view, setMultipleTouchEnabled: YES];
     if let Some(hidpi_factor) = platform_attributes.hidpi_factor {
         let () = msg_send![view, setContentScaleFactor: hidpi_factor as CGFloat];
@@ -432,12 +432,12 @@ pub unsafe fn create_view_controller(
     let view_controller: id = msg_send![class, alloc];
     assert!(
         !view_controller.is_null(),
-        "Failed to create `UIViewController` instance"
+        "[winit] Failed to create `UIViewController` instance"
     );
     let view_controller: id = msg_send![view_controller, init];
     assert!(
         !view_controller.is_null(),
-        "Failed to initialize `UIViewController` instance"
+        "[winit] Failed to initialize `UIViewController` instance"
     );
     let status_bar_hidden = if platform_attributes.prefers_status_bar_hidden {
         YES
@@ -487,11 +487,11 @@ pub unsafe fn create_window(
     let class = get_window_class();
 
     let window: id = msg_send![class, alloc];
-    assert!(!window.is_null(), "Failed to create `UIWindow` instance");
+    assert!(!window.is_null(), "[winit] Failed to create `UIWindow` instance");
     let window: id = msg_send![window, initWithFrame: frame];
     assert!(
         !window.is_null(),
-        "Failed to initialize `UIWindow` instance"
+        "[winit] Failed to initialize `UIWindow` instance"
     );
     let () = msg_send![window, setRootViewController: view_controller];
     match window_attributes.fullscreen {

@@ -243,14 +243,14 @@ impl AppState {
 
     pub fn queue_event(event: Event<Never>) {
         if !unsafe { msg_send![class!(NSThread), isMainThread] } {
-            panic!("Event queued from different thread: {:#?}", event);
+            panic!("[winit] Event queued from different thread: {:#?}", event);
         }
         HANDLER.events().push_back(event);
     }
 
     pub fn queue_events(mut events: VecDeque<Event<Never>>) {
         if !unsafe { msg_send![class!(NSThread), isMainThread] } {
-            panic!("Events queued from different thread: {:#?}", events);
+            panic!("[winit] Events queued from different thread: {:#?}", events);
         }
         HANDLER.events().append(&mut events);
     }

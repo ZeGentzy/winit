@@ -9,7 +9,10 @@ use winapi::{
 use std::{
     collections::{BTreeSet, VecDeque},
     io, mem, ptr,
+    sync::Arc,
 };
+
+use winit_types::error::Error;
 
 use super::{util, EventLoop};
 use crate::{
@@ -147,7 +150,7 @@ impl Window {
     }
 }
 
-pub(crate) fn get_monitor_info(hmonitor: HMONITOR) -> Result<winuser::MONITORINFOEXW, io::Error> {
+pub(crate) fn get_monitor_info(hmonitor: HMONITOR) -> Result<winuser::MONITORINFOEXW, Error> {
     let mut monitor_info: winuser::MONITORINFOEXW = unsafe { mem::zeroed() };
     monitor_info.cbSize = mem::size_of::<winuser::MONITORINFOEXW>() as DWORD;
     let status = unsafe {
@@ -157,7 +160,7 @@ pub(crate) fn get_monitor_info(hmonitor: HMONITOR) -> Result<winuser::MONITORINF
         )
     };
     if status == 0 {
-        Err(io::Error::last_os_error())
+        Err(make_oserror!(Arc::new(io::Error::last_os_error())))
     } else {
         Ok(monitor_info)
     }

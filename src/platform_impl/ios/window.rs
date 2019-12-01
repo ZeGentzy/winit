@@ -282,7 +282,7 @@ pub struct Window {
 impl Drop for Window {
     fn drop(&mut self) {
         unsafe {
-            assert_main_thread!("`Window::drop` can only be run on the main thread on iOS");
+            assert_main_thread!("[winit] `Window::drop` can only be run on the main thread on iOS");
         }
     }
 }
@@ -295,7 +295,7 @@ impl Deref for Window {
 
     fn deref(&self) -> &Inner {
         unsafe {
-            assert_main_thread!("`Window` methods can only be run on the main thread on iOS");
+            assert_main_thread!("[winit] `Window` methods can only be run on the main thread on iOS");
         }
         &self.inner
     }
@@ -304,7 +304,7 @@ impl Deref for Window {
 impl DerefMut for Window {
     fn deref_mut(&mut self) -> &mut Inner {
         unsafe {
-            assert_main_thread!("`Window` methods can only be run on the main thread on iOS");
+            assert_main_thread!("[winit] `Window` methods can only be run on the main thread on iOS");
         }
         &mut self.inner
     }
@@ -425,7 +425,7 @@ impl Inner {
         unsafe {
             assert!(
                 dpi::validate_hidpi_factor(hidpi_factor),
-                "`WindowExtIOS::set_hidpi_factor` received an invalid hidpi factor"
+                "[winit] `WindowExtIOS::set_hidpi_factor` received an invalid hidpi factor"
             );
             let hidpi_factor = hidpi_factor as CGFloat;
             let () = msg_send![self.view, setContentScaleFactor: hidpi_factor];
@@ -527,7 +527,7 @@ impl Inner {
                 let app: id = msg_send![class!(UIApplication), sharedApplication];
                 assert!(
                     !app.is_null(),
-                    "`Window::get_inner_position` cannot be called before `EventLoop::run` on iOS"
+                    "[winit] `Window::get_inner_position` cannot be called before `EventLoop::run` on iOS"
                 );
                 msg_send![app, statusBarFrame]
             };

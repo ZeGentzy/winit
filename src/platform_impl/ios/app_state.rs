@@ -28,13 +28,13 @@ use crate::{
 
 macro_rules! bug {
     ($($msg:tt)*) => {
-        panic!("winit iOS bug, file an issue: {}", format!($($msg)*))
+        panic!("[winit] winit iOS bug, file an issue: {}", format!($($msg)*))
     };
 }
 
 macro_rules! bug_assert {
     ($test:expr, $($msg:tt)*) => {
-        assert!($test, "winit iOS bug, file an issue: {}", format!($($msg)*))
+        assert!($test, "[winit] winit iOS bug, file an issue: {}", format!($($msg)*))
     };
 }
 
@@ -141,7 +141,7 @@ impl AppState {
 
         if cfg!(debug_assertions) {
             assert_main_thread!(
-                "bug in winit: `AppState::get_mut()` can only be called on the main thread"
+                "[winit] bug in winit: `AppState::get_mut()` can only be called on the main thread"
             );
         }
         let mut guard = APP_STATE.borrow_mut();
@@ -494,7 +494,7 @@ pub unsafe fn set_key_window(window: id) {
         | s @ &mut AppStateImpl::Waiting { .. }
         | s @ &mut AppStateImpl::PollFinished { .. } => bug!("unexpected state {:?}", s),
         &mut AppStateImpl::Terminated => {
-            panic!("Attempt to create a `Window` after the app has terminated")
+            panic!("[winit] Attempt to create a `Window` after the app has terminated")
         }
     }
     drop(this);
@@ -533,7 +533,7 @@ pub unsafe fn queue_gl_or_metal_redraw(window: id) {
         | s @ &mut AppStateImpl::Waiting { .. }
         | s @ &mut AppStateImpl::PollFinished { .. } => bug!("unexpected state {:?}", s),
         &mut AppStateImpl::Terminated => {
-            panic!("Attempt to create a `Window` after the app has terminated")
+            panic!("[winit] Attempt to create a `Window` after the app has terminated")
         }
     }
     drop(this);
@@ -947,7 +947,7 @@ pub fn os_capabilities() -> OSCapabilities {
                 // The minimum required iOS version is likely to grow in the future.
                 assert!(
                     atleast_ios_8 == YES,
-                    "`winit` requires iOS version 8 or greater"
+                    "[winit] `winit` requires iOS version 8 or greater"
                 );
                 msg_send![process_info, operatingSystemVersion]
             };

@@ -206,7 +206,7 @@ impl From<ScreenEdge> for UIRectEdge {
         assert_eq!(
             screen_edge.bits() & !ScreenEdge::ALL.bits(),
             0,
-            "invalid `ScreenEdge`"
+            "[winit] invalid `ScreenEdge`"
         );
         UIRectEdge(screen_edge.bits().into())
     }

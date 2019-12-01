@@ -43,5 +43,5 @@ fn main() {
 
 #[cfg(target_arch = "wasm32")]
 fn main() {
-    panic!("This example is not supported on web.");
+    panic!("[winit] This example is not supported on web.");
 }

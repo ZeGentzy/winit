@@ -1,7 +1,9 @@
 #![cfg(target_os = "windows")]
 
+use winit_types::error::Error;
 use parking_lot::Mutex;
 use raw_window_handle::{windows::WindowsHandle, RawWindowHandle};
+
 use std::{
     cell::Cell,
     ffi::OsStr,
@@ -66,7 +68,7 @@ impl Window {
         event_loop: &EventLoopWindowTarget<T>,
         w_attr: WindowAttributes,
         pl_attr: PlatformSpecificWindowBuilderAttributes,
-    ) -> Result<Window, RootOsError> {
+    ) -> Result<Window, Error> {
         // We dispatch an `init` function because of code style.
         // First person to remove the need for cloning here gets a cookie!
         //
@@ -80,9 +82,9 @@ impl Window {
                     // It is ok if the initialize result is `S_FALSE` because it might happen that
                     // multiple windows are created on the same thread.
                     if ole_init_result == OLE_E_WRONGCOMPOBJ {
-                        panic!("OleInitialize failed! Result was: `OLE_E_WRONGCOMPOBJ`");
+                        panic!("[winit] OleInitialize failed! Result was: `OLE_E_WRONGCOMPOBJ`");
                     } else if ole_init_result == RPC_E_CHANGED_MODE {
-                        panic!("OleInitialize failed! Result was: `RPC_E_CHANGED_MODE`");
+                        panic!("[winit] OleInitialize failed! Result was: `RPC_E_CHANGED_MODE`");
                     }
 
                     let file_drop_runner = event_loop.runner_shared.clone();
@@ -165,7 +167,7 @@ impl Window {
     }
 
     #[inline]
-    pub fn outer_position(&self) -> Result<LogicalPosition, NotSupportedError> {
+    pub fn outer_position(&self) -> Result<LogicalPosition, Error> {
         let physical_position = self.outer_position_physical();
         let dpi_factor = self.hidpi_factor();
         Ok(LogicalPosition::from_physical(
@@ -177,13 +179,13 @@ impl Window {
     pub(crate) fn inner_position_physical(&self) -> (i32, i32) {
         let mut position: POINT = unsafe { mem::zeroed() };
         if unsafe { winuser::ClientToScreen(self.window.0, &mut position) } == 0 {
-            panic!("Unexpected ClientToScreen failure: please report this error to https://github.com/rust-windowing/winit")
+            panic!("[winit] Unexpected ClientToScreen failure: please report this error to https://github.com/rust-windowing/winit")
         }
         (position.x, position.y)
     }
 
     #[inline]
-    pub fn inner_position(&self) -> Result<LogicalPosition, NotSupportedError> {
+    pub fn inner_position(&self) -> Result<LogicalPosition, Error> {
         let physical_position = self.inner_position_physical();
         let dpi_factor = self.hidpi_factor();
         Ok(LogicalPosition::from_physical(
@@ -229,7 +231,7 @@ impl Window {
     pub(crate) fn inner_size_physical(&self) -> (u32, u32) {
         let mut rect: RECT = unsafe { mem::zeroed() };
         if unsafe { winuser::GetClientRect(self.window.0, &mut rect) } == 0 {
-            panic!("Unexpected GetClientRect failure: please report this error to https://github.com/rust-windowing/winit")
+            panic!("[winit] Unexpected GetClientRect failure: please report this error to https://github.com/rust-windowing/winit")
         }
         (
             (rect.right - rect.left) as u32,
@@ -385,7 +387,7 @@ impl Window {
     }
 
     #[inline]
-    pub fn set_cursor_grab(&self, grab: bool) -> Result<(), ExternalError> {
+    pub fn set_cursor_grab(&self, grab: bool) -> Result<(), Error> {
         let window = self.window.clone();
         let window_state = Arc::clone(&self.window_state);
         let (tx, rx) = channel();
@@ -394,8 +396,7 @@ impl Window {
             let result = window_state
                 .lock()
                 .mouse
-                .set_cursor_flags(window.0, |f| f.set(CursorFlags::GRABBED, grab))
-                .map_err(|e| ExternalError::Os(os_error!(e)));
+                .set_cursor_flags(window.0, |f| f.set(CursorFlags::GRABBED, grab));
             let _ = tx.send(result);
         });
         rx.recv().unwrap()
@@ -423,14 +424,14 @@ impl Window {
         self.window_state.lock().dpi_factor
     }
 
-    fn set_cursor_position_physical(&self, x: i32, y: i32) -> Result<(), ExternalError> {
+    fn set_cursor_position_physical(&self, x: i32, y: i32) -> Result<(), Error> {
         let mut point = POINT { x, y };
         unsafe {
             if winuser::ClientToScreen(self.window.0, &mut point) == 0 {
-                return Err(ExternalError::Os(os_error!(io::Error::last_os_error())));
+                return Err(make_oserror!(Arc::new(io::Error::last_os_error())));
             }
             if winuser::SetCursorPos(point.x, point.y) == 0 {
-                return Err(ExternalError::Os(os_error!(io::Error::last_os_error())));
+                return Err(make_oserror!(Arc::new(io::Error::last_os_error())));
             }
         }
         Ok(())
@@ -440,7 +441,7 @@ impl Window {
     pub fn set_cursor_position(
         &self,
         logical_position: LogicalPosition,
-    ) -> Result<(), ExternalError> {
+    ) -> Result<(), Error> {
         let dpi_factor = self.hidpi_factor();
         let (x, y) = logical_position.to_physical(dpi_factor).into();
         self.set_cursor_position_physical(x, y)
@@ -739,7 +740,7 @@ unsafe fn init<T: 'static>(
     mut attributes: WindowAttributes,
     pl_attribs: PlatformSpecificWindowBuilderAttributes,
     event_loop: &EventLoopWindowTarget<T>,
-) -> Result<Window, RootOsError> {
+) -> Result<Window, Error> {
     let title = OsStr::new(&attributes.title)
         .encode_wide()
         .chain(Some(0).into_iter())
@@ -748,7 +749,7 @@ unsafe fn init<T: 'static>(
     let window_icon = {
         let icon = attributes.window_icon.take().map(WinIcon::from_icon);
         if let Some(icon) = icon {
-            Some(icon.map_err(|e| os_error!(e))?)
+            Some(icon?)
         } else {
             None
         }
@@ -756,7 +757,7 @@ unsafe fn init<T: 'static>(
     let taskbar_icon = {
         let icon = attributes.window_icon.take().map(WinIcon::from_icon);
         if let Some(icon) = icon {
-            Some(icon.map_err(|e| os_error!(e))?)
+            Some(icon?)
         } else {
             None
         }
@@ -776,10 +777,10 @@ unsafe fn init<T: 'static>(
             }
             dpi_factor
         } else {
-            return Err(os_error!(io::Error::new(
+            return Err(make_oserror!(Arc::new(io::Error::new(
                 io::ErrorKind::NotFound,
                 "No monitors were detected."
-            )));
+            ))));
         };
         dpi_factor.unwrap_or_else(|| {
             util::get_cursor_pos()
@@ -832,7 +833,7 @@ unsafe fn init<T: 'static>(
         );
 
         if handle.is_null() {
-            return Err(os_error!(io::Error::last_os_error()));
+            return Err(make_oserror!(Arc::new(io::Error::last_os_error())));
         }
 
         WindowWrapper(handle)

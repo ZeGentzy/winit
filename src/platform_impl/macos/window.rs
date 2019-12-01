@@ -297,7 +297,7 @@ impl UnownedWindow {
     ) -> Result<(Arc<Self>, IdRef), RootOsError> {
         unsafe {
             if !msg_send![class!(NSThread), isMainThread] {
-                panic!("Windows can only be created on the main thread on macOS");
+                panic!("[winit] Windows can only be created on the main thread on macOS");
             }
         }
 
@@ -724,7 +724,7 @@ impl UnownedWindow {
                     video_mode.video_mode.native_mode.0,
                     std::ptr::null(),
                 );
-                assert!(result == ffi::kCGErrorSuccess, "failed to set video mode");
+                assert!(result == ffi::kCGErrorSuccess, "[winit] failed to set video mode");
 
                 // After the display has been configured, fade back in
                 // asynchronously

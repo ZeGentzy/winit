@@ -4,6 +4,7 @@ use std::{
     os::raw::c_void,
     ptr, slice,
     sync::atomic::{AtomicBool, Ordering},
+    sync::Arc,
 };
 
 use crate::window::CursorIcon;
@@ -20,6 +21,8 @@ use winapi::{
         winuser,
     },
 };
+
+use winit_types::error::Error;
 
 // Helper function to dynamically load function pointer.
 // `library` and `function` must be zero-terminated.
@@ -77,11 +80,11 @@ pub unsafe fn status_map<T, F: FnMut(&mut T) -> BOOL>(mut fun: F) -> Option<T> {
     }
 }
 
-fn win_to_err<F: FnOnce() -> BOOL>(f: F) -> Result<(), io::Error> {
+fn win_to_err<F: FnOnce() -> BOOL>(f: F) -> Result<(), Error> {
     if f() != 0 {
         Ok(())
     } else {
-        Err(io::Error::last_os_error())
+        Err(make_oserror!(Arc::new(io::Error::last_os_error())))
     }
 }
 
@@ -93,7 +96,7 @@ pub fn get_window_rect(hwnd: HWND) -> Option<RECT> {
     unsafe { status_map(|rect| winuser::GetWindowRect(hwnd, rect)) }
 }
 
-pub fn get_client_rect(hwnd: HWND) -> Result<RECT, io::Error> {
+pub fn get_client_rect(hwnd: HWND) -> Result<RECT, Error> {
     unsafe {
         let mut rect = mem::zeroed();
         let mut top_left = mem::zeroed();
@@ -141,7 +144,7 @@ pub fn set_cursor_hidden(hidden: bool) {
     }
 }
 
-pub fn get_cursor_clip() -> Result<RECT, io::Error> {
+pub fn get_cursor_clip() -> Result<RECT, Error> {
     unsafe {
         let mut rect: RECT = mem::zeroed();
         win_to_err(|| winuser::GetClipCursor(&mut rect)).map(|_| rect)
@@ -151,7 +154,7 @@ pub fn get_cursor_clip() -> Result<RECT, io::Error> {
 /// Sets the cursor's clip rect.
 ///
 /// Note that calling this will automatically dispatch a `WM_MOUSEMOVE` event.
-pub fn set_cursor_clip(rect: Option<RECT>) -> Result<(), io::Error> {
+pub fn set_cursor_clip(rect: Option<RECT>) -> Result<(), Error> {
     unsafe {
         let rect_ptr = rect
             .as_ref()
